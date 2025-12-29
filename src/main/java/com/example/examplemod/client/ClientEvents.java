@@ -11,6 +11,7 @@ import com.example.examplemod.network.packet.QuadrotorControlC2SPacket;
 
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
+import net.minecraft.world.entity.Pose;
 import net.minecraft.world.item.ItemStack;
 
 import org.lwjgl.system.MemoryStack;
@@ -159,10 +160,11 @@ public class ClientEvents {
 
         if (camera.getEntity() instanceof QuadrotorEntity quad && quad.getId() == fpvEntityId) {
             // QuadrotorEntity 存的是弧度，Renderer 使用度数 => 转换为度
-            float rollDeg = (float) Math.toDegrees(quad.getRollAngle());
-            float pitchDeg = (float) Math.toDegrees(quad.getPitchAngle());
-            float yawDeg = (float) Math.toDegrees(quad.getYawAngle());
+            float rollDeg = (float) Math.toDegrees(quad.rollAngle);
+            float pitchDeg = (float) Math.toDegrees(quad.pitchAngle);
+            float yawDeg = (float) Math.toDegrees(quad.yawAngle);
 
+            float factor;
             //首先检查这一帧，服务端有没有提供新的角度，若有则更新角度
             if(targetYaw != yawDeg || targetPitch != pitchDeg || targetRoll != rollDeg){
                 prevYaw = targetYaw;
@@ -171,17 +173,20 @@ public class ClientEvents {
                 targetYaw = yawDeg;
                 targetPitch = pitchDeg;
                 targetRoll = rollDeg;
+                factor = 0;// 一刻的开始
+            }else{
+                factor = (float)event.getPartialTick();
             }
 
             //然后进行从prev到target的平滑插值
-            float factor = (float)event.getPartialTick();
+            
             float currentYaw = prevYaw + (targetYaw - prevYaw) * factor;
             float currentPitch = prevPitch + (targetPitch - prevPitch) * factor;
             float currentRoll = prevRoll + (targetRoll - prevRoll) * factor;
 
             //设置角度
-            event.setYaw(0);
-            event.setPitch(0);
+            event.setYaw(currentYaw);
+            event.setPitch(currentPitch);
             event.setRoll(currentRoll);
             
         }

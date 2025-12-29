@@ -61,9 +61,9 @@ public class QuadrotorEntity extends Entity {
 
     // 姿态 / 角运动状态（在机体坐标系里）
     private Vec3 angularVelocity = Vec3.ZERO; // (omega_x, omega_y, omega_z) 对应绕 X（侧滚/俯仰）、Y（偏航）、Z（纵滚/横滚）的角速度，单位：rad/s
-    private float pitchAngle = 0.0f; // 绕 X 轴 (rad)
-    private float yawAngle = 0.0f;   // 绕 Y 轴 (rad)
-    private float rollAngle = 0.0f;  // 绕 Z 轴 (rad)
+    public float pitchAngle = 0.0f; // 绕 X 轴 (rad)
+    public float yawAngle = 0.0f;   // 绕 Y 轴 (rad)
+    public float rollAngle = 0.0f;  // 绕 Z 轴 (rad)
 
     // 物理参数（可调试以获得合适的行为）
     private static final double MAX_THRUST = 0.7; // 每个电机最大推力（游戏/物理单位，需调参）
@@ -108,8 +108,6 @@ public class QuadrotorEntity extends Entity {
         return true; // 确保有碰撞箱
     }
 
-
-    
     // 推力控制方法（从网络包调用 或 在得到自动控制器的控制量后自己调整）
     public void setMotorState(float motor1, float motor2, float motor3, float motor4) {
         if (this.level().isClientSide()) return;
@@ -267,6 +265,11 @@ public class QuadrotorEntity extends Entity {
             spawnMotorParticle(motor3Pos, this.entityData.get(DATA_MOTOR3));
             spawnMotorParticle(motor4Pos, this.entityData.get(DATA_MOTOR4));
             //this.move(MoverType.SELF, this.getDeltaMovement());
+
+            //同步姿态数据
+            this.yawAngle = getYawAngle();
+            this.pitchAngle = getPitchAngle();
+            this.rollAngle = getRollAngle();
         }
 
 
