@@ -11,11 +11,14 @@ import com.example.examplemod.item.RemoteController;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;
+
 
 public class QuadrotorControlC2SPacket {
     //该数据包应该传输玩家的操作指令（以遥控器举例来说，可能包含四个连续量）
@@ -93,34 +96,27 @@ public class QuadrotorControlC2SPacket {
             if (ctx.getSender() == null) return;
             
             Player player = ctx.getSender();
+            ItemStack remoteController = ItemStack.EMPTY;
 
             // 从玩家手中获取遥控器 UUID（优先主手）
-            final java.util.UUID remoteId;
             ItemStack main = player.getMainHandItem();
             ItemStack off = player.getOffhandItem();
             if (main.getItem() == ModItems.RemoteController.get()) {
-                remoteId = RemoteController.getOrCreateRemoteId(main);
-            } else if (off.getItem() == ModItems.RemoteController.get()) {
-                remoteId = RemoteController.getOrCreateRemoteId(off);
+                remoteController = main;
+            } else if (off.getItem() == ModItems.RemoteController.get()){
+                remoteController = off;
             }else{
-                remoteId = null;
-            }
-
-            if (remoteId == null) {
-                player.sendSystemMessage(Component.literal("未检测到遥控器，请手持遥控器发送指令。"));
+                // 未找到遥控器，拒绝控制
                 return;
             }
 
-            // 查找与该遥控器 UUID 配对的无人机
-            Optional<QuadrotorEntity> opt = player.level()
-                .getEntitiesOfClass(QuadrotorEntity.class, player.getBoundingBox().inflate(32.0D),
-                    entity -> remoteId.equals(entity.getController()))
-                .stream()
-                .findFirst();
 
+            // 查找遥控器绑定的无人机（根据遥控器内存储的无人机实体id）
+            Entity quad = player.level().getEntity(RemoteController.getPairedQuadrotorId(remoteController));
+            player.sendSystemMessage(Component.literal("无人机实体id:"));
             
-            if (opt.isPresent()) {
-                QuadrotorEntity quadrotor = opt.get();
+            if (quad instanceof QuadrotorEntity) {
+                QuadrotorEntity quadrotor = (QuadrotorEntity)quad;
                 
                 // 设置新的推力值
                 quadrotor.setMotorState(packet.motorState);

@@ -6,6 +6,8 @@ import com.example.examplemod.autopilot.AutoController;
 import com.example.examplemod.autopilot.ControlCommand;
 import com.example.examplemod.autopilot.MotorState;
 import com.example.examplemod.autopilot.autocontrollers.SimpleAutoController;
+import com.example.examplemod.item.ModItems;
+import com.example.examplemod.item.RemoteController;
 
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
@@ -18,6 +20,8 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.core.particles.ParticleTypes;
@@ -100,6 +104,11 @@ public class QuadrotorEntity extends Entity {
         return true;
     }
 
+    @Override
+    public boolean canBeCollidedWith() {
+        return true; // 确保有碰撞箱
+    }
+
     public UUID getController() { 
         return this.controllerUuid; 
     }
@@ -174,51 +183,6 @@ public class QuadrotorEntity extends Entity {
         this.entityData.set(DATA_MOTOR4, this.motor4);
     }
 
-    @Override
-    public InteractionResult interact(Player player, InteractionHand hand) {
-        if (this.level().isClientSide()) {
-            player.displayClientMessage(Component.literal("Quadrotor: 交互 (客户端)"), false);
-            return InteractionResult.sidedSuccess(true);
-        }
-
-        player.displayClientMessage(Component.literal("Quadrotor: 交互 (服务器)"), false);
-
-        // 从玩家手中获取遥控器的 UUID（优先主手）
-        java.util.UUID remoteId = null;
-        net.minecraft.world.item.ItemStack main = player.getMainHandItem();
-        net.minecraft.world.item.ItemStack off = player.getOffhandItem();
-        if (main.getItem() == com.example.examplemod.item.ModItems.RemoteController.get()) {
-            remoteId = com.example.examplemod.item.RemoteController.getOrCreateRemoteId(main);
-        } else if (off.getItem() == com.example.examplemod.item.ModItems.RemoteController.get()) {
-            remoteId = com.example.examplemod.item.RemoteController.getOrCreateRemoteId(off);
-        }
-
-        if (remoteId == null) {
-            player.displayClientMessage(Component.literal("Quadrotor: 请手持遥控器与无人机配对"), false);
-            return InteractionResult.sidedSuccess(false);
-        }
-
-        if (player.isShiftKeyDown()) {
-            // 解绑（仅当绑定到该遥控器时）
-            if (controllerUuid != null && controllerUuid.equals(remoteId)) {
-                controllerUuid = null;
-                player.displayClientMessage(Component.literal("Quadrotor: 已解绑"), false);
-            } else {
-                player.displayClientMessage(Component.literal("Quadrotor: 未绑定给你手持的遥控器"), false);
-            }
-        } else {
-            // 绑定到手持遥控器
-            if (controllerUuid == null) {
-                controllerUuid = remoteId;
-                player.displayClientMessage(Component.literal("Quadrotor: 已绑定给该遥控器"), false);
-            } else if (controllerUuid.equals(remoteId)) {
-                player.displayClientMessage(Component.literal("Quadrotor: 已经绑定给该遥控器"), false);
-            } else {
-                player.displayClientMessage(Component.literal("Quadrotor: 已经绑定给其他遥控器"), false);
-            }
-        }
-        return InteractionResult.sidedSuccess(false);
-    }
 
     @Override
     public void tick() {
@@ -314,7 +278,24 @@ public class QuadrotorEntity extends Entity {
             
     }
 
+    @Override
+    public InteractionResult interact(Player player, InteractionHand hand) {
+        //我们在该函数中处理无人机和遥控器的绑定，绑定方式是让遥控器中存储无人机的实体id
+        if (this.level().isClientSide()) {
+            player.displayClientMessage(Component.literal("Quadrotor: 交互 (客户端)"), false);
+            return InteractionResult.SUCCESS;
+        }
 
+
+        ItemStack item = player.getMainHandItem();
+        if(item.getItem() == ModItems.RemoteController.get()){
+            int entityId = this.getId();
+            RemoteController.setPairedQuadrotorId(item, entityId);
+        }
+
+        player.displayClientMessage(Component.literal("Quadrotor: 交互 (服务器)"), false);
+        return InteractionResult.SUCCESS;
+    }
     /**
      * 将机体坐标系向量转换为世界坐标系。使用的旋转顺序为：roll(绕Z) -> pitch(绕X) -> yaw(绕Y)，角度均为弧度。
      */
@@ -377,6 +358,8 @@ public class QuadrotorEntity extends Entity {
     public Packet<ClientGamePacketListener> getAddEntityPacket() {
         return NetworkHooks.getEntitySpawningPacket(this);
     }
+
+    
     
     public void setCommand(ControlCommand command) {
         this.controlCommand = command;

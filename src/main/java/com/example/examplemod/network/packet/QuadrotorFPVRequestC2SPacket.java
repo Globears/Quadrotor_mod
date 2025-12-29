@@ -7,6 +7,7 @@ import com.example.examplemod.item.ModItems;
 import com.example.examplemod.item.RemoteController;
 import com.example.examplemod.network.ModNetwork;
 
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Entity;
@@ -54,8 +55,12 @@ public class QuadrotorFPVRequestC2SPacket {
             ItemStack off = sender.getOffhandItem();
             if (main.getItem() == ModItems.RemoteController.get()) {
                 remoteId = RemoteController.getOrCreateRemoteId(main);
+                CompoundTag tag = main.getOrCreateTag();
+                tag.putInt("QuadrotorId", pkt.entityId);
             } else if (off.getItem() == ModItems.RemoteController.get()) {
                 remoteId = RemoteController.getOrCreateRemoteId(off);
+                CompoundTag tag = main.getOrCreateTag();
+                tag.putInt("QuadrotorId", pkt.entityId);
             }else{
                 remoteId = null;
             }
