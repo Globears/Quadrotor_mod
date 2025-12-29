@@ -8,20 +8,16 @@ import com.example.examplemod.autopilot.MotorState;
 import com.example.examplemod.entity.custom.QuadrotorEntity;
 import com.example.examplemod.network.ModNetwork;
 import com.example.examplemod.network.packet.QuadrotorControlC2SPacket;
-import com.mojang.blaze3d.vertex.PoseStack;
 
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
-import net.minecraft.world.entity.Pose;
 import net.minecraft.world.item.ItemStack;
 
 import org.lwjgl.system.MemoryStack;
 import java.nio.DoubleBuffer;
-import com.example.examplemod.item.ModItems;
 import com.example.examplemod.item.RemoteController;
 
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.EntityRenderersEvent;
 import net.minecraftforge.client.event.ViewportEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -40,11 +36,6 @@ public class ClientEvents {
     private static final float MOUSE_SENSITIVITY = 0.05f; // 映射系数（可调）
     private static final float MOUSE_PIXELS_TO_RAD = 0.01f; // 像素位移 -> 弧度（需调参）
     private static final double MOUSE_PIXELS_DEADZONE = 1.0; // 小于该像素变化视为未移动
-
-    // 遥控器持有状态（进入时锁定玩家视角）
-    private static boolean holdingRemotePrev = false;
-    private static float lockedPitch = 0.0f;
-    private static float lockedYaw = 0.0f;
 
     // FPV 状态
     private static boolean fpvActive = false;
@@ -130,12 +121,6 @@ public class ClientEvents {
             return;
         }
 
-        
-
-        
-        
-        
-
         //判断当前输入和上次输入是否相同，相同则不发送
         if (motorState.motor1 == old_motorState.motor1 &&
             motorState.motor2 == old_motorState.motor2 &&
@@ -158,55 +143,47 @@ public class ClientEvents {
         
     }
 
-    static float rollOld;
-    static float pitchOld;
-    static float yawOld;
-    static float lastRoll;
-    static float lastPitch;
-    static float lastYaw;
-
+    //均为角度，方便直接用于渲染的函数
+    static float targetYaw = 0;
+    static float targetPitch = 0;
+    static float targetRoll = 0;
+    static float prevYaw = 0;
+    static float prevPitch = 0;
+    static float prevRoll = 0;
 
     @SubscribeEvent
     public static void onCameraSetup(ViewportEvent.ComputeCameraAngles event) {
         if (!fpvActive) return;
 
         Camera camera = Minecraft.getInstance().gameRenderer.getMainCamera();
+
         if (camera.getEntity() instanceof QuadrotorEntity quad && quad.getId() == fpvEntityId) {
             // QuadrotorEntity 存的是弧度，Renderer 使用度数 => 转换为度
             float rollDeg = (float) Math.toDegrees(quad.getRollAngle());
             float pitchDeg = (float) Math.toDegrees(quad.getPitchAngle());
             float yawDeg = (float) Math.toDegrees(quad.getYawAngle());
 
-            if(lastRoll != rollOld){
-                rollOld = lastRoll;
+            //首先检查这一帧，服务端有没有提供新的角度，若有则更新角度
+            if(targetYaw != yawDeg || targetPitch != pitchDeg || targetRoll != rollDeg){
+                prevYaw = targetYaw;
+                prevPitch = targetPitch;
+                prevRoll = targetRoll;
+                targetYaw = yawDeg;
+                targetPitch = pitchDeg;
+                targetRoll = rollDeg;
             }
-            if(lastPitch != pitchOld){
-                pitchOld = lastPitch;
-            }
-            if(lastYaw != yawOld){
-                yawOld = lastYaw;
-            }
 
-            // 可选：对 roll 限幅或平滑（见下）
-            float smoothedRoll = rollDeg;
-            float smoothedPitch = pitchDeg;
-            float smoothedYaw = yawDeg;
+            //然后进行从prev到target的平滑插值
+            float factor = (float)event.getPartialTick();
+            float currentYaw = prevYaw + (targetYaw - prevYaw) * factor;
+            float currentPitch = prevPitch + (targetPitch - prevPitch) * factor;
+            float currentRoll = prevRoll + (targetRoll - prevRoll) * factor;
 
-            // 平滑处理
-            smoothedRoll = rollOld + (float)event.getPartialTick() * (rollDeg - rollOld);
-            smoothedPitch = pitchOld + (float)event.getPartialTick() * (pitchDeg - pitchOld);
-            smoothedYaw = yawOld + (float)event.getPartialTick() * (yawDeg - yawOld);
-
-
-            event.setYaw(smoothedYaw);
-            event.setPitch(smoothedPitch);
-            event.setRoll(smoothedRoll);
-
-            lastRoll = rollDeg;
-            lastPitch = pitchDeg;
-            lastYaw = yawDeg;
+            //设置角度
+            event.setYaw(0);
+            event.setPitch(0);
+            event.setRoll(currentRoll);
             
-
         }
     }
 }
