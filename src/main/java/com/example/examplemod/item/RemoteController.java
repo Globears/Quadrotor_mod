@@ -19,8 +19,6 @@ public class RemoteController extends Item {
         super(new Item.Properties());
     }
 
-    
-
     @Override
     public InteractionResultHolder<ItemStack> use(Level world, Player player, InteractionHand hand) {
         // 我们在该函数中处理遥控的开始与结束
@@ -54,6 +52,8 @@ public class RemoteController extends Item {
         return tag.getUUID("RemoteId");
     }
 
+
+    // TODO:实体id不能保持控制权，世界重启后id会重新分配，我们还希望实体的物品（刷怪蛋）也能保存其唯一标识
     public static int getPairedQuadrotorId(ItemStack stack) {
         CompoundTag tag = stack.getOrCreateTag();
         return tag.getInt("QuadrotorId");
@@ -63,4 +63,6 @@ public class RemoteController extends Item {
         CompoundTag tag = stack.getOrCreateTag();
         tag.putInt("QuadrotorId", entityId);
     }
+
+    // TODO:我们希望灵敏度配置保存在遥控器物品里
 }

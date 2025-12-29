@@ -119,7 +119,7 @@ public class QuadrotorEntity extends Entity {
         this.motor3 = Mth.clamp(motor3, -1f, 1f);
         this.motor4 = Mth.clamp(motor4, -1f, 1f);
 
-        // 更新同步数据，让客户端看到电机推力
+        // 更新同步数据
         this.entityData.set(DATA_MOTOR1, this.motor1);
         this.entityData.set(DATA_MOTOR2, this.motor2);
         this.entityData.set(DATA_MOTOR3, this.motor3);
@@ -145,17 +145,20 @@ public class QuadrotorEntity extends Entity {
         if (controllerUuid != null) {
             tag.putUUID("ControllerRemote", controllerUuid);
         }
+        //额外存储电机转速值
         tag.putFloat("Motor1", this.motor1);
         tag.putFloat("Motor2", this.motor2);
         tag.putFloat("Motor3", this.motor3);
         tag.putFloat("Motor4", this.motor4);
+
+        //额外存储飞行器姿态
+        tag.putFloat("Yaw_angle", this.getYawAngle());
+        tag.putFloat("Pitch_angle", this.getPitchAngle());
+        tag.putFloat("Roll_angle", this.getRollAngle());
     }
 
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
-        if (tag.hasUUID("ControllerRemote")) {
-            this.controllerUuid = tag.getUUID("ControllerRemote");
-        }
         this.motor1 = tag.getFloat("Motor1");
         this.motor2 = tag.getFloat("Motor2");
         this.motor3 = tag.getFloat("Motor3");
@@ -166,6 +169,15 @@ public class QuadrotorEntity extends Entity {
         this.entityData.set(DATA_MOTOR2, this.motor2);
         this.entityData.set(DATA_MOTOR3, this.motor3);
         this.entityData.set(DATA_MOTOR4, this.motor4);
+
+        //将存储的姿态角写入同步数据
+        float yaw = tag.getFloat("Yaw_angle");
+        float pitch = tag.getFloat("Pitch_angle");
+        float roll = tag.getFloat("Roll_angle");
+
+        this.entityData.set(DATA_YAW_ANGLE,yaw);
+        this.entityData.set(DATA_PITCH_ANGLE,pitch);
+        this.entityData.set(DATA_ROLL_ANGLE,roll);
     }
 
 
