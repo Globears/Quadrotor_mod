@@ -160,9 +160,9 @@ public class ClientEvents {
 
         if (camera.getEntity() instanceof QuadrotorEntity quad && quad.getId() == fpvEntityId) {
             // QuadrotorEntity 存的是弧度，Renderer 使用度数 => 转换为度
-            float rollDeg = (float) Math.toDegrees(quad.rollAngle);
-            float pitchDeg = (float) Math.toDegrees(quad.pitchAngle);
-            float yawDeg = (float) Math.toDegrees(quad.yawAngle);
+            float rollDeg = (float) Math.toDegrees(quad.getRollAngle());
+            float pitchDeg = (float) Math.toDegrees(quad.getPitchAngle());
+            float yawDeg = (float) Math.toDegrees(quad.getYawAngle());
 
             float factor;
             //首先检查这一帧，服务端有没有提供新的角度，若有则更新角度
