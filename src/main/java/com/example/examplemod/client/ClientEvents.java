@@ -13,10 +13,13 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.Pose;
+import net.minecraft.world.item.ItemStack;
 
 import org.lwjgl.system.MemoryStack;
 import java.nio.DoubleBuffer;
 import com.example.examplemod.item.ModItems;
+import com.example.examplemod.item.RemoteController;
+
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.EntityRenderersEvent;
 import net.minecraftforge.client.event.ViewportEvent;
@@ -148,8 +151,10 @@ public class ClientEvents {
         // 更新旧状态
         old_motorState = motorState;
         old_command = command;
-
-        ModNetwork.CHANNEL.sendToServer(new QuadrotorControlC2SPacket(motorState, command, mc.player.getUUID()));
+        
+        ItemStack remoteController = mc.player.getMainHandItem();
+        int quadrotorId = RemoteController.getPairedQuadrotorId(remoteController);
+        ModNetwork.CHANNEL.sendToServer(new QuadrotorControlC2SPacket(motorState, command, quadrotorId));
         
     }
 

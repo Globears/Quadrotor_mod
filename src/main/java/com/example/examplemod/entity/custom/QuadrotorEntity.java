@@ -20,7 +20,6 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
@@ -71,8 +70,8 @@ public class QuadrotorEntity extends Entity {
     private static final double MASS = 1.0;       // 无人机质量（单位）
     private static final double INERTIA = 0.03;   // 转动惯量（简化为标量）
     private static final double K_YAW = 0.2;      // 由电机自旋产生的偏航力矩系数
-    private static final double ANGULAR_DAMPING = 3; // 角阻尼系数
-    private static final double LINEAR_DRAG = 0.02;    // 线阻尼（每 tick 的缩放量）
+    private static final double ANGULAR_DAMPING = 0.2; // 角速度阻尼
+    private static final double LINEAR_DRAG = 0.02;    // 线速度阻尼（每 tick 的缩放量）
     private static final double DT = 1.0 / 20.0;      // tick 时步（秒）
     private static final double GRAVITY = 9.81 * 0.1; // 重力缩放以匹配之前近似的 -0.03/tick
 
@@ -109,21 +108,7 @@ public class QuadrotorEntity extends Entity {
         return true; // 确保有碰撞箱
     }
 
-    public UUID getController() { 
-        return this.controllerUuid; 
-    }
 
-    // 绑定控制者（服务器端调用）
-    public void bindController(UUID uuid) {
-        if (this.level().isClientSide()) return;
-        this.controllerUuid = uuid;
-    }
-
-    // 解除绑定（服务器端调用）
-    public void unbindController() {
-        if (this.level().isClientSide()) return;
-        this.controllerUuid = null;
-    }
     
     // 推力控制方法（从网络包调用 或 在得到自动控制器的控制量后自己调整）
     public void setMotorState(float motor1, float motor2, float motor3, float motor4) {
@@ -218,7 +203,7 @@ public class QuadrotorEntity extends Entity {
 
             // 更新角速度并考虑角阻尼
             angularVelocity = angularVelocity.add(angAccel.scale(DT));
-            angularVelocity = angularVelocity.scale(1.0 - ANGULAR_DAMPING * DT);
+            angularVelocity = angularVelocity.scale(1.0 - ANGULAR_DAMPING);
 
             // 更新姿态角（弧度）
             pitchAngle += angularVelocity.x * DT;

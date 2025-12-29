@@ -1,27 +1,23 @@
 package com.example.examplemod.network.packet;
 
-import java.util.Optional;
-import java.util.UUID;
-
 import com.example.examplemod.autopilot.ControlCommand;
 import com.example.examplemod.autopilot.MotorState;
 import com.example.examplemod.entity.custom.QuadrotorEntity;
-import com.example.examplemod.item.ModItems;
-import com.example.examplemod.item.RemoteController;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;
 
 
 public class QuadrotorControlC2SPacket {
-    //该数据包应该传输玩家的操作指令（以遥控器举例来说，可能包含四个连续量）
+    //该数据包传输玩家的控制指令，要控制的无人机，还可能有四个电机的状态（调试用）
+
+    //要控制的无人机id
+    private final int quadrotorId;
 
     //指令
     private final ControlCommand command;
@@ -29,22 +25,19 @@ public class QuadrotorControlC2SPacket {
     //由指令发布的电机状态
     private final MotorState motorState;
     
-    // 玩家UUID，用于验证控制权
-    private final UUID playerUUID;
-    
 
     // 常规构造器
-    public QuadrotorControlC2SPacket(MotorState motorState, ControlCommand command, UUID playerUUID) {
+    public QuadrotorControlC2SPacket(MotorState motorState, ControlCommand command, int id) {
         this.motorState = motorState;
         this.command = command;
-        this.playerUUID = playerUUID;
+        this.quadrotorId = id;
     }
     
     // 重置构造器
-    public QuadrotorControlC2SPacket(UUID playerUUID) {
+    public QuadrotorControlC2SPacket() {
         this.motorState = new MotorState();
         this.command = new ControlCommand();
-        this.playerUUID = playerUUID;
+        this.quadrotorId = 0;
     }
 
     //数据包在传输时先编码成字节流
@@ -59,7 +52,7 @@ public class QuadrotorControlC2SPacket {
         buffer.writeFloat(packet.command.referencePitch);
         buffer.writeFloat(packet.command.referenceRoll);
 
-        buffer.writeUUID(packet.playerUUID);
+        buffer.writeInt(packet.quadrotorId);
     }
 
     //收到数据包后，解码到变量里
@@ -75,7 +68,7 @@ public class QuadrotorControlC2SPacket {
         float referencePitch = buffer.readFloat();
         float referenceRoll = buffer.readFloat();
 
-        UUID playerUUID = buffer.readUUID();
+        int quadrotorId = buffer.readInt();
 
         MotorState motorState = new MotorState();
         motorState.motor1 = motor1;
@@ -87,7 +80,7 @@ public class QuadrotorControlC2SPacket {
         command.referenceYawSpeed = referenceYawSpeed;
         command.referencePitch = referencePitch;
         command.referenceRoll = referenceRoll;
-        return new QuadrotorControlC2SPacket(motorState, command, playerUUID);
+        return new QuadrotorControlC2SPacket(motorState, command, quadrotorId);
     }
 
     public static void handle(QuadrotorControlC2SPacket packet, Supplier<NetworkEvent.Context> ctxSupplier) {
@@ -96,48 +89,18 @@ public class QuadrotorControlC2SPacket {
             if (ctx.getSender() == null) return;
             
             Player player = ctx.getSender();
-            ItemStack remoteController = ItemStack.EMPTY;
 
-            // 从玩家手中获取遥控器 UUID（优先主手）
-            ItemStack main = player.getMainHandItem();
-            ItemStack off = player.getOffhandItem();
-            if (main.getItem() == ModItems.RemoteController.get()) {
-                remoteController = main;
-            } else if (off.getItem() == ModItems.RemoteController.get()){
-                remoteController = off;
-            }else{
-                // 未找到遥控器，拒绝控制
-                return;
+            Entity quad = player.level().getEntity(packet.quadrotorId);
+
+            if(!(quad instanceof QuadrotorEntity)){
+                player.sendSystemMessage(Component.literal("控制时出现异常"));
             }
-
-
-            // 查找遥控器绑定的无人机（根据遥控器内存储的无人机实体id）
-            Entity quad = player.level().getEntity(RemoteController.getPairedQuadrotorId(remoteController));
-            player.sendSystemMessage(Component.literal("无人机实体id:"));
             
-            if (quad instanceof QuadrotorEntity) {
+            if(quad instanceof QuadrotorEntity){
                 QuadrotorEntity quadrotor = (QuadrotorEntity)quad;
-                
-                // 设置新的推力值
-                quadrotor.setMotorState(packet.motorState);
-                //向无人机发送命令
                 quadrotor.setCommand(packet.command);
-                
-            } else {
-                // 没有找到控制的无人机
-                player.sendSystemMessage(Component.literal("未找到你的遥控器绑定的无人机。右键无人机与遥控器配对。"));
-                
-                // 可选：在玩家周围寻找未绑定的无人机
-                Optional<QuadrotorEntity> unbound = player.level()
-                    .getEntitiesOfClass(QuadrotorEntity.class, player.getBoundingBox().inflate(16.0D),
-                        entity -> entity.getController() == null)
-                    .stream()
-                    .findFirst();
-                    
-                if (unbound.isPresent()) {
-                    player.sendSystemMessage(Component.literal("提示: 附近有未绑定的无人机，右键点击可与遥控器配对。"));
-                }
             }
+            
         });
         ctx.setPacketHandled(true);
     }

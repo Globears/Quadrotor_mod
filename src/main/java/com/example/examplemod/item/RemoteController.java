@@ -6,14 +6,11 @@ import com.example.examplemod.network.ModNetwork;
 import com.example.examplemod.network.packet.QuadrotorFPVRequestC2SPacket;
 
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.phys.EntityHitResult;
-import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.level.Level;
 
 public class RemoteController extends Item {
@@ -28,21 +25,21 @@ public class RemoteController extends Item {
         // 玩家拿着遥控器右键时，如果遥控器存储了无人机实体的实体id，那么就切换过去并开始遥控
 
         if (player.level().isClientSide()) {
-            // 客户端执行：发送请求给服务器
+            // 如果是按shift右键，则退出fpv
             if(player.isShiftKeyDown()){
-                // 退出FPV
                 ModNetwork.CHANNEL.sendToServer(new QuadrotorFPVRequestC2SPacket(-2));
+                return InteractionResultHolder.success(player.getItemInHand(hand));
             }
             
+            // 如果是正常右键，则进入绑定的无人机的fpv
             ItemStack remoteController = player.getMainHandItem();
             int quadrotorId = getPairedQuadrotorId(remoteController);
             ModNetwork.CHANNEL.sendToServer(new QuadrotorFPVRequestC2SPacket(quadrotorId));
             
-
-            player.sendSystemMessage(Component.literal("遥控器：客户端右击"));
             return InteractionResultHolder.success(player.getItemInHand(hand));
         }
-        player.sendSystemMessage(Component.literal("遥控器：服务端右击"));
+
+
         return InteractionResultHolder.pass(player.getItemInHand(hand));
     }
 
