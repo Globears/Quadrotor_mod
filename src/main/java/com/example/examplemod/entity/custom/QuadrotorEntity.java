@@ -179,7 +179,7 @@ public class QuadrotorEntity extends Entity {
 
             //应用自动控制
             MotorState autoMotorState = this.autoController.Update(this, this.controlCommand);
-            this.setMotorState(autoMotorState.motor1, autoMotorState.motor2, autoMotorState.motor3, autoMotorState.motor4);
+            this.setMotorState(autoMotorState);
 
             //应用推力（计算机体坐标系中的推力与力矩 -> 转换到世界坐标系并积分）
             // 每个电机推力（机体坐标系 +Y 为向上）

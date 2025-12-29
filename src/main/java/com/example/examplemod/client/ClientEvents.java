@@ -118,7 +118,7 @@ public class ClientEvents {
             // 映射到参考俯仰/滚转/偏航速度
             command.referencePitch = (float)(-dy * MOUSE_PIXELS_TO_RAD * MOUSE_SENSITIVITY);
             command.referenceRoll = (float)(dx * MOUSE_PIXELS_TO_RAD * MOUSE_SENSITIVITY);
-            command.referenceYawSpeed = (float)(dx * MOUSE_PIXELS_TO_RAD * MOUSE_SENSITIVITY * 0.5);
+            command.referenceYawSpeed = 0; //偏航暂时不由鼠标操控
         }
 
         // 检查是否手持遥控器（主手或副手）
