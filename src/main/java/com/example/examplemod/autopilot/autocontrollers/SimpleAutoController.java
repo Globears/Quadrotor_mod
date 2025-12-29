@@ -16,10 +16,8 @@ public class SimpleAutoController extends AutoController{
     private float lastYawAngle = 0.0f;
     private float lastYawErrorRate = 0.0f;
 
-    private float integralPitchError = 0.0f;
     private float lastPitchError = 0.0f;
 
-    private float integralRollError = 0.0f;
     private float lastRollError = 0.0f;
 
     // PID 增益和常量
@@ -96,10 +94,10 @@ public class SimpleAutoController extends AutoController{
         float t4 = (A - B + C - D) / 4.0f;
 
         // 将结果限制在 [-1, 1]，并施加一点阻尼（模拟电机响应）
-        motorState.motor1 = Math.max(00f, Math.min(1.0f, t1)) * 0.99f;
-        motorState.motor2 = Math.max(00f, Math.min(1.0f, t2)) * 0.99f;
-        motorState.motor3 = Math.max(00f, Math.min(1.0f, t3)) * 0.99f;
-        motorState.motor4 = Math.max(00f, Math.min(1.0f, t4)) * 0.99f;
+        motorState.motor1 = Math.max(-1.0f, Math.min(1.0f, t1)) * 0.99f;
+        motorState.motor2 = Math.max(-1.0f, Math.min(1.0f, t2)) * 0.99f;
+        motorState.motor3 = Math.max(-1.0f, Math.min(1.0f, t3)) * 0.99f;
+        motorState.motor4 = Math.max(-1.0f, Math.min(1.0f, t4)) * 0.99f;
 
         return motorState;
         

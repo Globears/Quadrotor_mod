@@ -158,6 +158,14 @@ public class ClientEvents {
         
     }
 
+    static float rollOld;
+    static float pitchOld;
+    static float yawOld;
+    static float lastRoll;
+    static float lastPitch;
+    static float lastYaw;
+
+
     @SubscribeEvent
     public static void onCameraSetup(ViewportEvent.ComputeCameraAngles event) {
         if (!fpvActive) return;
@@ -168,12 +176,35 @@ public class ClientEvents {
             float rollDeg = (float) Math.toDegrees(quad.getRollAngle());
             float pitchDeg = (float) Math.toDegrees(quad.getPitchAngle());
             float yawDeg = (float) Math.toDegrees(quad.getYawAngle());
-            // 可选：对 roll 限幅或平滑（见下）
-            event.setYaw(yawDeg);
-            event.setPitch(pitchDeg);
-            event.setRoll(rollDeg);
 
-            //TODO:对三个角度进行平滑
+            if(lastRoll != rollOld){
+                rollOld = lastRoll;
+            }
+            if(lastPitch != pitchOld){
+                pitchOld = lastPitch;
+            }
+            if(lastYaw != yawOld){
+                yawOld = lastYaw;
+            }
+
+            // 可选：对 roll 限幅或平滑（见下）
+            float smoothedRoll = rollDeg;
+            float smoothedPitch = pitchDeg;
+            float smoothedYaw = yawDeg;
+
+            // 平滑处理
+            smoothedRoll = rollOld + (float)event.getPartialTick() * (rollDeg - rollOld);
+            smoothedPitch = pitchOld + (float)event.getPartialTick() * (pitchDeg - pitchOld);
+            smoothedYaw = yawOld + (float)event.getPartialTick() * (yawDeg - yawOld);
+
+
+            event.setYaw(smoothedYaw);
+            event.setPitch(smoothedPitch);
+            event.setRoll(smoothedRoll);
+
+            lastRoll = rollDeg;
+            lastPitch = pitchDeg;
+            lastYaw = yawDeg;
             
 
         }

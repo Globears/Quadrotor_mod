@@ -19,6 +19,8 @@ public class RemoteController extends Item {
         super(new Item.Properties());
     }
 
+    
+
     @Override
     public InteractionResultHolder<ItemStack> use(Level world, Player player, InteractionHand hand) {
         // 我们在该函数中处理遥控的开始与结束
