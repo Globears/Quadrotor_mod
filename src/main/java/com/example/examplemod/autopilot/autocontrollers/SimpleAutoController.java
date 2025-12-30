@@ -64,7 +64,6 @@ public class SimpleAutoController extends AutoController{
         float pitchDerivative = (pitchError - lastPitchError) / DT;
         float pitchControl = KP_ANGLE * pitchError + KD_ANGLE * pitchDerivative;
         lastPitchError = pitchError;
-        pitchControl = 0;
 
         // --- ROLL angle PD (控制横滚角) ---
         float rollError = command.referenceRoll /* - roll*/;
@@ -85,9 +84,9 @@ public class SimpleAutoController extends AutoController{
         // C =  t1 - t2 - t3 + t4 = 2 * rollTorque
         // D = -t1 + t2 - t3 + t4 = yawTorque / K_YAW
 
-        float B =  2.0f * pitchControl;
-        float C =  2.0f * rollControl;
-        float D =  yawTorque / K_YAW;
+        float B =  2.0f * command.referencePitch;
+        float C =  2.0f * command.referenceRoll;
+        float D =  command.referenceYawSpeed / K_YAW;
         //我们约定，向右偏航为正的偏航角，偏航角速度和偏航力矩也以该方向为正
         // 无敌坐标系
 
