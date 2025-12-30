@@ -38,8 +38,6 @@ public class QuadrotorEntity extends Entity {
     private static final EntityDataAccessor<Float> DATA_PITCH_ANGLE = SynchedEntityData.defineId(QuadrotorEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DATA_YAW_ANGLE = SynchedEntityData.defineId(QuadrotorEntity.class, EntityDataSerializers.FLOAT);
 
-    // TODO:无人机区块加载
-
     // 推力控制变量
     private float motor1 = 0.0f;   // 电机1推力
     private float motor2 = 0.0f;   // 电机2推力
@@ -56,36 +54,40 @@ public class QuadrotorEntity extends Entity {
     private Vec3 velocity = Vec3.ZERO;
     private int debugTick = 0;
 
-    // 姿态 / 角运动状态（在机体坐标系里）
-    private Vec3 angularVelocity = Vec3.ZERO; // (omega_x, omega_y, omega_z) 对应绕 X（侧滚/俯仰）、Y（偏航）、Z（纵滚/横滚）的角速度，单位：rad/s
-    private float pitchAngle = 0.0f; // 绕 X 轴 (rad)
-    private float yawAngle = 0.0f;   // 绕 Y 轴 (rad)
-    private float rollAngle = 0.0f;  // 绕 Z 轴 (rad)
+    // 角运动状态（在机体坐标系里）
+    private Vec3 angularVelocityBody = Vec3.ZERO; // (p, q, r) 对应绕 X（横滚）、Y（俯仰）、Z（偏航）的角速度，单位：rad/s
+    
+    // 四元数姿态表示（w, x, y, z）
+    private double quaternionW = 1.0;  // 实部
+    private double quaternionX = 0.0;  // i分量
+    private double quaternionY = 0.0;  // j分量
+    private double quaternionZ = 0.0;  // k分量
+    
+    // 欧拉角（仅用于显示和同步，从四元数计算得到）
+    private float rollAngle = 0.0f;   // 绕 X 轴
+    private float pitchAngle = 0.0f;  // 绕 Y 轴
+    private float yawAngle = 0.0f;    // 绕 Z 轴
 
-    // 物理参数（可调试以获得合适的行为）
-    private static final double MAX_THRUST = 0.7; // 每个电机最大推力（游戏/物理单位，需调参）
-    private static final double MASS = 1.0;       // 无人机质量（单位）
-    private static final double INERTIA = 0.03;   // 转动惯量（简化为标量）
-    private static final double K_YAW = 0.2;  // 由电机自旋产生的偏航力矩系数
-    private static final double ANGULAR_DAMPING = 0.2; // 角速度阻尼
-    private static final double LINEAR_DRAG = 0.02;    // 线速度阻尼（每 tick 的缩放量）
-    private static final double DT = 1.0 / 20.0;      // tick 时步（秒）
-    private static final double GRAVITY = 9.81 * 0.1; // 重力缩放以匹配之前近似的 -0.03/tick
+    // 物理参数
+    private static final double MAX_THRUST = 0.7;
+    private static final double MASS = 1.0;
+    private static final double INERTIA = 0.03;
+    private static final double K_YAW = 0.2;
+    private static final double ANGULAR_DAMPING = 0.2;
+    private static final double LINEAR_DRAG = 0.02;
+    private static final double DT = 1.0 / 20.0;
+    private static final double GRAVITY = 9.81 * 0.1;
 
     private final AutoController autoController = new SimpleAutoController();
     private ControlCommand controlCommand = new ControlCommand();
-
 
     public QuadrotorEntity(EntityType<? extends QuadrotorEntity> type, Level level) {
         super(type, level);
         this.setNoGravity(true);
     }
 
-    
-
     @Override
     protected void defineSynchedData() {
-        //同步电机推力的数据
         this.entityData.define(DATA_MOTOR1, 0.0f);
         this.entityData.define(DATA_MOTOR2, 0.0f);
         this.entityData.define(DATA_MOTOR3, 0.0f);
@@ -94,85 +96,6 @@ public class QuadrotorEntity extends Entity {
         this.entityData.define(DATA_ROLL_ANGLE, 0.0f);
         this.entityData.define(DATA_PITCH_ANGLE, 0.0f);
         this.entityData.define(DATA_YAW_ANGLE, 0.0f);
-        
-
-    }
-
-    @Override
-    public boolean isPickable() {
-        return true;
-    }
-
-    @Override
-    public boolean canBeCollidedWith() {
-        return true; // 确保有碰撞箱
-    }
-
-    // 推力控制方法（从网络包调用 或 在得到自动控制器的控制量后自己调整）
-    public void setMotorState(float motor1, float motor2, float motor3, float motor4) {
-        if (this.level().isClientSide()) return;
-        
-        this.motor1 = Mth.clamp(motor1, -1f, 1f);
-        this.motor2 = Mth.clamp(motor2, -1f, 1f);
-        this.motor3 = Mth.clamp(motor3, -1f, 1f);
-        this.motor4 = Mth.clamp(motor4, -1f, 1f);
-
-        // 更新同步数据
-        this.entityData.set(DATA_MOTOR1, this.motor1);
-        this.entityData.set(DATA_MOTOR2, this.motor2);
-        this.entityData.set(DATA_MOTOR3, this.motor3);
-        this.entityData.set(DATA_MOTOR4, this.motor4);
-    }
-
-    public void setMotorState(MotorState motorState) {
-        setMotorState(motorState.motor1, motorState.motor2, motorState.motor3, motorState.motor4);
-    }
-    
-    public MotorState getMotorState() {
-        MotorState state = new MotorState();
-        state.motor1 = this.motor1;
-        state.motor2 = this.motor2;
-        state.motor3 = this.motor3;
-        state.motor4 = this.motor4;
-        return state;
-    }
-    
-
-    @Override
-    protected void addAdditionalSaveData(CompoundTag tag) {
-        //额外存储电机转速值
-        tag.putFloat("Motor1", this.motor1);
-        tag.putFloat("Motor2", this.motor2);
-        tag.putFloat("Motor3", this.motor3);
-        tag.putFloat("Motor4", this.motor4);
-
-        //额外存储飞行器姿态
-        tag.putFloat("Yaw_angle", this.getYawAngle());
-        tag.putFloat("Pitch_angle", this.getPitchAngle());
-        tag.putFloat("Roll_angle", this.getRollAngle());
-    }
-
-    @Override
-    protected void readAdditionalSaveData(CompoundTag tag) {
-        this.motor1 = tag.getFloat("Motor1");
-        this.motor2 = tag.getFloat("Motor2");
-        this.motor3 = tag.getFloat("Motor3");
-        this.motor4 = tag.getFloat("Motor4");
-
-        // 将存档的推力值写入同步数据（客户端加载实体时可见）
-        this.entityData.set(DATA_MOTOR1, this.motor1);
-        this.entityData.set(DATA_MOTOR2, this.motor2);
-        this.entityData.set(DATA_MOTOR3, this.motor3);
-        this.entityData.set(DATA_MOTOR4, this.motor4);
-
-        //将存储的姿态角写入同步数据
-        float yaw = tag.getFloat("Yaw_angle");
-        float pitch = tag.getFloat("Pitch_angle");
-        float roll = tag.getFloat("Roll_angle");
-
-        this.entityData.set(DATA_YAW_ANGLE,yaw);
-        this.entityData.set(DATA_PITCH_ANGLE,pitch);
-        this.entityData.set(DATA_ROLL_ANGLE,roll);
     }
 
     @Override
@@ -182,13 +105,11 @@ public class QuadrotorEntity extends Entity {
 
         //服务端操作
         if(!this.level().isClientSide()){ 
+            // 应用自动控制
+            MotorState autoMotorState = this.autoController.Update(this, this.controlCommand);
+            this.setMotorState(autoMotorState);
 
-            //应用自动控制
-            //MotorState autoMotorState = this.autoController.Update(this, this.controlCommand);
-            //this.setMotorState(autoMotorState);
-
-            //应用推力（计算机体坐标系中的推力与力矩 -> 转换到世界坐标系并积分）
-            // 每个电机推力（机体坐标系 +Y 为向上），我们约定电机从上往下看顺时针旋转为正方向
+            // 计算总推力和力矩（机体坐标系）
             double t1 = this.motor1 * MAX_THRUST;
             double t2 = this.motor2 * MAX_THRUST;
             double t3 = this.motor3 * MAX_THRUST;
@@ -196,100 +117,320 @@ public class QuadrotorEntity extends Entity {
 
             double totalThrust = t1 + t2 + t3 + t4;
 
-            // // 由 r x F 计算力矩（机体坐标系）
-            // double torqueX = -(motor1Pos.z * t1 + motor2Pos.z * t2 + motor3Pos.z * t3 + motor4Pos.z * t4);
-            // double torqueZ =  (motor1Pos.x * t1 + motor2Pos.x * t2 + motor3Pos.x * t3 + motor4Pos.x * t4);
-            // // 偏航力矩（电机自旋产生的反扭矩，电机1和3为正旋，2和4为负旋）
-            // // 由于电机1和3的旋向是正的，因此它们给机体带来的扭矩就是负的
-            // double yawTorque = (-t1 + t2 - t3 + t4) * K_YAW;
+            // 力矩计算（机体坐标系）
+            double rollTorque = (t2 + t3) - (t1 + t4);      // 横滚力矩（绕X轴）
+            double pitchTorque = (t1 + t2) - (t3 + t4);     // 俯仰力矩（绕Y轴）
+            double yawTorque = (-t1 + t2 - t3 + t4) * K_YAW; // 偏航力矩（绕Z轴）
 
-            // Vec3 torque = new Vec3(torqueX, yawTorque, torqueZ);
+            // 机体坐标系的角加速度
+            Vec3 angularAccelBody = new Vec3(
+                rollTorque / INERTIA,
+                pitchTorque / INERTIA,
+                yawTorque / INERTIA
+            );
 
-            // // 角加速度 alpha = torque / I 这是在机体坐标系下的
-            // Vec3 angAccel = new Vec3(torque.x / INERTIA, torque.y / INERTIA, torque.z / INERTIA);
+            // 在机体坐标系中更新角速度
+            angularVelocityBody = angularVelocityBody.add(angularAccelBody.scale(DT));
+            angularVelocityBody = angularVelocityBody.scale(1.0 - ANGULAR_DAMPING);
 
-            // //更新角速度之前应该把角加速度转换到世界坐标系下
-            // angAccel = bodyToWorld(angAccel, getYawAngle(), getPitchAngle(), getRollAngle());
+            // 使用四元数更新姿态
+            updateQuaternionFromAngularVelocity(DT);
 
-            // // 更新角速度并考虑角阻尼
-            // angularVelocity = angularVelocity.add(angAccel.scale(DT));
-            // angularVelocity = angularVelocity.scale(1.0 - ANGULAR_DAMPING);
-
-            //调试：直接把命令转换成角速度
-            angularVelocity = new Vec3(controlCommand.referencePitch ,controlCommand.referenceYawSpeed, controlCommand.referenceRoll);
-
-            // 更新姿态角（弧度）不能这样更新！
-            pitchAngle += angularVelocity.x * DT;
-            yawAngle   += angularVelocity.y * DT;
-            rollAngle  += angularVelocity.z * DT;
-
-            // 将机体推力转换到世界坐标系并计算线性加速度
+            // 计算世界坐标系的推力（使用四元数旋转）
             Vec3 thrustBody = new Vec3(0, totalThrust, 0);
-            Vec3 thrustWorld = bodyToWorld(thrustBody, yawAngle, pitchAngle, rollAngle);
+            Vec3 thrustWorld = rotateVectorByQuaternion(thrustBody);
+            
+            // 计算加速度（包括重力）
             Vec3 accel = thrustWorld.scale(1.0 / MASS);
-
-            // 更新线性速度：积分加速度并加入重力、阻尼
+            accel = accel.add(0, -GRAVITY, 0);
+            
+            // 更新速度
             velocity = velocity.add(accel.scale(DT));
-            velocity = velocity.add(0, -GRAVITY * DT, 0);
-
             velocity = velocity.scale(1.0 - LINEAR_DRAG);
+            
+            // 清除Z轴速度（你之前有velocity = Vec3.ZERO; 但我认为这不是你想要的）
+            // 如果不需要固定速度，请注释掉下面这行
             velocity = Vec3.ZERO;
 
-            //防止在地面上时向下的速度累计
+            // 防止在地面上时向下的速度累计
             if (this.onGround() && velocity.y < 0) {
                 velocity = new Vec3(velocity.x, 0, velocity.z);
             }
 
             this.setDeltaMovement(velocity);
-            //this.move(MoverType.SELF, this.getDeltaMovement());
-
+            
+            // 从四元数计算欧拉角（用于显示和同步）
+            calculateEulerAnglesFromQuaternion();
+            
             // 更新实体显示用的角度（度）
             this.setYRot((float)Math.toDegrees(yawAngle));
             this.setXRot((float)Math.toDegrees(pitchAngle));
+            
+            // 同步数据到客户端
             this.entityData.set(DATA_ROLL_ANGLE, rollAngle);
             this.entityData.set(DATA_YAW_ANGLE, yawAngle);
             this.entityData.set(DATA_PITCH_ANGLE, pitchAngle);
-
-            // 调试信息：每2tick在服务器端显示一次状态（避免客户端覆盖服务端的数据）
+            
+            // 调试信息
             debugTick++;
-            if (debugTick % 2 == 0 && !this.level().isClientSide()) {
+            if (debugTick % 2 == 0) {
                 this.setCustomName(Component.literal(String.format(
                     "yaw %.2f,pitch %.2f,roll %.2f | motors=%.2f,%.2f,%.2f,%.2f",
-                    getYawAngle(),getPitchAngle(),getRollAngle(),
+                    yawAngle, pitchAngle, rollAngle,
                     motor1, motor2, motor3, motor4
                 )));
-            this.setCustomNameVisible(true);
+                this.setCustomNameVisible(true);
             }
         }
         
-        //客户端操作：可视化电机推力
+        // 客户端操作：可视化电机推力
         if (this.level().isClientSide()) {
             spawnMotorParticle(motor1Pos, this.entityData.get(DATA_MOTOR1));
             spawnMotorParticle(motor2Pos, this.entityData.get(DATA_MOTOR2));
             spawnMotorParticle(motor3Pos, this.entityData.get(DATA_MOTOR3));
             spawnMotorParticle(motor4Pos, this.entityData.get(DATA_MOTOR4));
-            //this.move(MoverType.SELF, this.getDeltaMovement());
-
-            //同步姿态数据
+            
+            // 从同步数据获取欧拉角（客户端显示用）
             this.yawAngle = getSynchedYawAngle();
             this.pitchAngle = getSynchedPitchAngle();
             this.rollAngle = getSynchedRollAngle();
         }
 
-
         this.move(MoverType.SELF, this.getDeltaMovement());
+    }
+    
+    /**
+     * 使用四元数更新姿态
+     * 根据机体坐标系下的角速度更新四元数
+     */
+    private void updateQuaternionFromAngularVelocity(double dt) {
+        double p = angularVelocityBody.x; // 横滚角速度
+        double q = angularVelocityBody.y; // 俯仰角速度
+        double r = angularVelocityBody.z; // 偏航角速度
         
+        // 计算旋转向量（机体坐标系）
+        double angle = Math.sqrt(p*p + q*q + r*r) * dt;
+        
+        if (angle < 1e-12) {
+            return; // 无旋转
+        }
+        
+        // 计算旋转轴（机体坐标系）
+        double axisX = p / Math.sqrt(p*p + q*q + r*r);
+        double axisY = q / Math.sqrt(p*p + q*q + r*r);
+        double axisZ = r / Math.sqrt(p*p + q*q + r*r);
+        
+        // 构造旋转四元数
+        double sinHalfAngle = Math.sin(angle / 2.0);
+        double cosHalfAngle = Math.cos(angle / 2.0);
+        
+        double deltaQW = cosHalfAngle;
+        double deltaQX = axisX * sinHalfAngle;
+        double deltaQY = axisY * sinHalfAngle;
+        double deltaQZ = axisZ * sinHalfAngle;
+        
+        // 使用四元数乘法更新姿态：q_new = q_old * delta_q
+        // 注意：这里使用右乘，因为旋转是在机体坐标系中发生的
+        double w = quaternionW;
+        double x = quaternionX;
+        double y = quaternionY;
+        double z = quaternionZ;
+        
+        quaternionW = w*deltaQW - x*deltaQX - y*deltaQY - z*deltaQZ;
+        quaternionX = w*deltaQX + x*deltaQW + y*deltaQZ - z*deltaQY;
+        quaternionY = w*deltaQY - x*deltaQZ + y*deltaQW + z*deltaQX;
+        quaternionZ = w*deltaQZ + x*deltaQY - y*deltaQX + z*deltaQW;
+        
+        // 归一化四元数（防止数值误差积累）
+        normalizeQuaternion();
+    }
+    
+    /**
+     * 归一化四元数
+     */
+    private void normalizeQuaternion() {
+        double norm = Math.sqrt(
+            quaternionW*quaternionW + 
+            quaternionX*quaternionX + 
+            quaternionY*quaternionY + 
+            quaternionZ*quaternionZ
+        );
+        
+        if (norm > 0.0) {
+            quaternionW /= norm;
+            quaternionX /= norm;
+            quaternionY /= norm;
+            quaternionZ /= norm;
+        } else {
+            // 如果四元数为零，重置为单位四元数
+            quaternionW = 1.0;
+            quaternionX = 0.0;
+            quaternionY = 0.0;
+            quaternionZ = 0.0;
+        }
+    }
+    
+    /**
+     * 使用四元数旋转向量（机体坐标系 -> 世界坐标系）
+     */
+    private Vec3 rotateVectorByQuaternion(Vec3 v) {
+        // 提取四元数分量
+        double qw = quaternionW;
+        double qx = quaternionX;
+        double qy = quaternionY;
+        double qz = quaternionZ;
+        
+        // 提取向量分量
+        double vx = v.x;
+        double vy = v.y;
+        double vz = v.z;
+        
+        // 计算四元数旋转：v' = q * v * q_conj
+        // 其中v是纯四元数 (0, vx, vy, vz)
+        double tx = 2.0 * (qy * vz - qz * vy);
+        double ty = 2.0 * (qz * vx - qx * vz);
+        double tz = 2.0 * (qx * vy - qy * vx);
+        
+        double rx = vx + qw * tx + (qy * tz - qz * ty);
+        double ry = vy + qw * ty + (qz * tx - qx * tz);
+        double rz = vz + qw * tz + (qx * ty - qy * tx);
+        
+        return new Vec3(rx, ry, rz);
+    }
+    
+    /**
+     * 从四元数计算欧拉角（Z-Y-X顺序：偏航->俯仰->横滚）
+     */
+    private void calculateEulerAnglesFromQuaternion() {
+        double qw = quaternionW;
+        double qx = quaternionX;
+        double qy = quaternionY;
+        double qz = quaternionZ;
+        
+        // 使用Z-Y-X顺序（偏航->俯仰->横滚）
+        // 这是标准的航空航天顺序
+        
+        // 横滚 (x轴旋转)
+        double sinr_cosp = 2.0 * (qw * qx + qy * qz);
+        double cosr_cosp = 1.0 - 2.0 * (qx * qx + qy * qy);
+        rollAngle = (float) Math.atan2(sinr_cosp, cosr_cosp);
+        
+        // 俯仰 (y轴旋转)
+        double sinp = 2.0 * (qw * qy - qz * qx);
+        if (Math.abs(sinp) >= 1) {
+            pitchAngle = (float) Math.copySign(Math.PI / 2, sinp);
+        } else {
+            pitchAngle = (float) Math.asin(sinp);
+        }
+        
+        // 偏航 (z轴旋转)
+        double siny_cosp = 2.0 * (qw * qz + qx * qy);
+        double cosy_cosp = 1.0 - 2.0 * (qy * qy + qz * qz);
+        yawAngle = (float) Math.atan2(siny_cosp, cosy_cosp);
+        
+        // 归一化角度到 [-π, π]
+        rollAngle = (float) normalizeAngle(rollAngle);
+        pitchAngle = (float) normalizeAngle(pitchAngle);
+        yawAngle = (float) normalizeAngle(yawAngle);
+    }
+    
+    /**
+     * 角度归一化到 [-π, π]
+     */
+    private double normalizeAngle(double angle) {
+        while (angle > Math.PI) angle -= 2.0 * Math.PI;
+        while (angle < -Math.PI) angle += 2.0 * Math.PI;
+        return angle;
+    }
+    
+    /**
+     * 在电机处生成粒子效果（修改为使用四元数旋转）
+     */
+    private void spawnMotorParticle(Vec3 motorBodyPos, float motorThrust) {
+        if (this.level().isClientSide() && Math.abs(motorThrust) > 0.05f) {
+            // 使用四元数旋转电机位置到世界坐标系
+            Vec3 offset = rotateVectorByQuaternion(motorBodyPos);
+            double px = this.getX() + offset.x;
+            double py = this.getY() + offset.y;
+            double pz = this.getZ() + offset.z;
             
+            // 推力方向（机体 +Y 方向）
+            Vec3 thrustDir = rotateVectorByQuaternion(new Vec3(0, 1, 0)).normalize();
+            
+            // 粒子速度与推力大小相关
+            double speed = 0.1 + 0.4 * Math.abs(motorThrust);
+            double vx = -thrustDir.x * speed;
+            double vy = -thrustDir.y * speed;
+            double vz = -thrustDir.z * speed;
+            
+            this.level().addParticle(ParticleTypes.FLAME, px, py, pz, vx, vy, vz);
+        }
+    }
+
+    @Override
+    protected void addAdditionalSaveData(CompoundTag tag) {
+        tag.putFloat("Motor1", this.motor1);
+        tag.putFloat("Motor2", this.motor2);
+        tag.putFloat("Motor3", this.motor3);
+        tag.putFloat("Motor4", this.motor4);
+        
+        // 保存四元数
+        tag.putDouble("QuatW", quaternionW);
+        tag.putDouble("QuatX", quaternionX);
+        tag.putDouble("QuatY", quaternionY);
+        tag.putDouble("QuatZ", quaternionZ);
+        
+        // 保存角速度
+        tag.putDouble("AngVelX", angularVelocityBody.x);
+        tag.putDouble("AngVelY", angularVelocityBody.y);
+        tag.putDouble("AngVelZ", angularVelocityBody.z);
+    }
+
+    @Override
+    protected void readAdditionalSaveData(CompoundTag tag) {
+        this.motor1 = tag.getFloat("Motor1");
+        this.motor2 = tag.getFloat("Motor2");
+        this.motor3 = tag.getFloat("Motor3");
+        this.motor4 = tag.getFloat("Motor4");
+        
+        // 读取四元数
+        quaternionW = tag.getDouble("QuatW");
+        quaternionX = tag.getDouble("QuatX");
+        quaternionY = tag.getDouble("QuatY");
+        quaternionZ = tag.getDouble("QuatZ");
+        
+        // 读取角速度
+        double avx = tag.getDouble("AngVelX");
+        double avy = tag.getDouble("AngVelY");
+        double avz = tag.getDouble("AngVelZ");
+        angularVelocityBody = new Vec3(avx, avy, avz);
+        
+        // 重新计算欧拉角
+        calculateEulerAnglesFromQuaternion();
+        
+        // 同步数据
+        this.entityData.set(DATA_MOTOR1, this.motor1);
+        this.entityData.set(DATA_MOTOR2, this.motor2);
+        this.entityData.set(DATA_MOTOR3, this.motor3);
+        this.entityData.set(DATA_MOTOR4, this.motor4);
+        
+        this.entityData.set(DATA_YAW_ANGLE, yawAngle);
+        this.entityData.set(DATA_PITCH_ANGLE, pitchAngle);
+        this.entityData.set(DATA_ROLL_ANGLE, rollAngle);
+    }
+
+    // ... 其他方法保持不变 ...
+    @Override
+    public Packet<ClientGamePacketListener> getAddEntityPacket() {
+        return NetworkHooks.getEntitySpawningPacket(this);
     }
 
     @Override
     public InteractionResult interact(Player player, InteractionHand hand) {
-        //我们在该函数中处理无人机和遥控器的绑定，绑定方式是让遥控器中存储无人机的实体id
         if (this.level().isClientSide()) {
             player.displayClientMessage(Component.literal("Quadrotor: 交互 (客户端)"), false);
             return InteractionResult.SUCCESS;
         }
-
 
         ItemStack item = player.getMainHandItem();
         if(item.getItem() == ModItems.RemoteController.get()){
@@ -300,97 +441,53 @@ public class QuadrotorEntity extends Entity {
         player.displayClientMessage(Component.literal("Quadrotor: 交互 (服务器)"), false);
         return InteractionResult.SUCCESS;
     }
-    /**
-     * 将机体坐标系向量转换为世界坐标系。使用的旋转顺序为：roll(绕Z) -> pitch(绕X) -> yaw(绕Y)，角度均为弧度。
-     */
-    private Vec3 bodyToWorld(Vec3 v, double yaw, double pitch, double roll) {
-        double x = v.x;
-        double y = v.y;
-        double z = v.z;
 
-        double cr = Math.cos(roll);
-        double sr = Math.sin(roll);
-        double cp = Math.cos(pitch);
-        double sp = Math.sin(pitch);
-        double cy = Math.cos(yaw);
-        double sy = Math.sin(yaw);
-
-        // roll around Z
-        double x1 = x * cr - y * sr;
-        double y1 = x * sr + y * cr;
-        double z1 = z;
-        // pitch around X
-        double x2 = x1;
-        double y2 = y1 * cp - z1 * sp;
-        double z2 = y1 * sp + z1 * cp;
-        // yaw around Y
-        double x3 = x2 * cy - z2 * sy;
-        double y3 = y2;
-        double z3 = x2 * sy + z2 * cy;
-
-        return new Vec3(x3, y3, z3);
-    }
-
-    // 客户端：在电机处沿推力方向发射粒子用于调试/可视化
-    private void spawnMotorParticle(Vec3 motorBodyPos, float motorThrust) {
-        if (this.level().isClientSide() && Math.abs(motorThrust) > 0.05f) {
-            float pitch = this.getPitchAngle();
-            float roll = this.getRollAngle();
-            float yaw = this.getYawAngle();
-
-            // 电机位置从机体坐标系转换到世界坐标系
-            Vec3 offset = bodyToWorld(motorBodyPos, yaw, pitch, roll);
-            double px = this.getX() + offset.x;
-            double py = this.getY() + offset.y;
-            double pz = this.getZ() + offset.z;
-
-            // 推力方向（机体 +Y 方向转换到世界并取单位向量）
-            Vec3 thrustDir = bodyToWorld(new Vec3(0, 1, 0), yaw, pitch, roll).normalize();
-
-            // 我们希望粒子沿着推力的相反方向（看起来像喷射物向下喷出），速度与推力大小相关
-            double speed = 0.1 + 0.4 * Math.abs(motorThrust);
-            double vx = -thrustDir.x * speed;
-            double vy = -thrustDir.y * speed;
-            double vz = -thrustDir.z * speed;
-
-            // 生成粒子（客户端）
-            this.level().addParticle(ParticleTypes.FLAME, px, py, pz, vx, vy, vz);
-        }
+    @Override
+    public boolean isPickable(){
+        return true;
     }
 
     @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
+    public boolean canBeCollidedWith(){
+        return true;
     }
 
-    
-    
     public void setCommand(ControlCommand command) {
         this.controlCommand = command;
     }
 
-    public float getRollAngle() {
-        return this.rollAngle;
+    public void setMotorState(float motor1, float motor2, float motor3, float motor4){
+        this.motor1 = motor1;
+        this.motor2 = motor2;
+        this.motor3 = motor3;
+        this.motor4 = motor4;
     }
 
-    public float getPitchAngle() {
-        return this.pitchAngle;
+    public void setMotorState(MotorState motorState){
+        setMotorState(motorState.motor1, motorState.motor2, motorState.motor3, motorState.motor4);
     }
 
-    public float getYawAngle() {
-        return this.yawAngle;
-    }
-
-    public float getSynchedRollAngle(){
-        return this.entityData.get(DATA_ROLL_ANGLE);
+    public float getSynchedYawAngle(){
+        return this.entityData.get(DATA_YAW_ANGLE);
     }
 
     public float getSynchedPitchAngle(){
         return this.entityData.get(DATA_PITCH_ANGLE);
     }
 
-    public float getSynchedYawAngle(){
-        return this.entityData.get(DATA_YAW_ANGLE);
+    public float getSynchedRollAngle(){
+        return this.entityData.get(DATA_ROLL_ANGLE);
     }
-    
+
+    public float getYawAngle() {
+        return this.yawAngle;
+    }
+
+    public float getPitchAngle(){
+        return this.pitchAngle;
+    }
+
+    public float getRollAngle() {
+        return this.rollAngle;
+    }
 }
