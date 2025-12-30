@@ -11,7 +11,6 @@ import com.example.examplemod.network.packet.QuadrotorControlC2SPacket;
 
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
-import net.minecraft.world.entity.Pose;
 import net.minecraft.world.item.ItemStack;
 
 import org.lwjgl.system.MemoryStack;
@@ -35,8 +34,10 @@ public class ClientEvents {
     private static double lastCursorX = 0.0;
     private static double lastCursorY = 0.0;
     private static final float MOUSE_SENSITIVITY = 0.05f; // 映射系数（可调）
-    private static final float MOUSE_PIXELS_TO_RAD = 0.01f; // 像素位移 -> 弧度（需调参）
+    private static final float MOUSE_PIXELS_TO_RAD = 0.03f; // 像素位移 -> 弧度（需调参）
     private static final double MOUSE_PIXELS_DEADZONE = 1.0; // 小于该像素变化视为未移动
+
+    private static float throttle = 0.0f;
 
     // FPV 状态
     private static boolean fpvActive = false;
@@ -79,8 +80,25 @@ public class ClientEvents {
         command.referencePitch = 0.0f;
         command.referenceRoll = 0.0f;
 
+        // 使用按键控制油门
         if (KeyMappings.THROTTLE.isDown()) {
-            command.referenceThrottle = 1.0f;
+            throttle += 0.02f;
+            if(throttle > 1.0f) throttle = 1.0f;
+            command.referenceThrottle = throttle;
+        }else if (KeyMappings.THROTTLE_N.isDown()){
+            throttle -= 0.02f;
+            if(throttle < 0) throttle = 0;
+            command.referenceThrottle = throttle;
+        }else{
+            command.referenceThrottle = throttle;
+        }
+
+        // 使用按键控制偏航
+        if (KeyMappings.YAW_RIGHT.isDown()){
+            command.referenceYawSpeed = 1f;
+        }
+        if (KeyMappings.YAW_LEFT.isDown()){
+            command.referenceYawSpeed = -1f;
         }
 
         // 使用鼠标移动进行姿态控制（FPV 情况下）
@@ -101,8 +119,9 @@ public class ClientEvents {
             double dx = cx - lastCursorX;
             double dy = cy - lastCursorY;
 
-            //lastCursorX = cx;
-            //lastCursorY = cy;
+            // 使用速度控制更符合直觉
+            lastCursorX = cx;
+            lastCursorY = cy;
 
             if (Math.abs(dx) < MOUSE_PIXELS_DEADZONE) dx = 0.0;
             if (Math.abs(dy) < MOUSE_PIXELS_DEADZONE) dy = 0.0;
@@ -110,7 +129,6 @@ public class ClientEvents {
             // 映射到参考俯仰/滚转/偏航速度
             command.referencePitch = (float)(-dy * MOUSE_PIXELS_TO_RAD * MOUSE_SENSITIVITY);
             command.referenceRoll = (float)(dx * MOUSE_PIXELS_TO_RAD * MOUSE_SENSITIVITY);
-            command.referenceYawSpeed = 0; //偏航暂时不由鼠标操控
         }
 
         // 检查是否手持遥控器（主手或副手）

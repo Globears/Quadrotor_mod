@@ -28,7 +28,7 @@ public class QuadrotorRenderer extends EntityRenderer<QuadrotorEntity> {
 
         // Translate so the model sits at entity feet as intended by the model (bb_main was offset to y=24)
         // Apply entity orientation (yaw/pitch) and roll so the visual model matches physics
-        poseStack.mulPose(com.mojang.math.Axis.YP.rotationDegrees((float)Math.toDegrees(entity.getYawAngle())));
+        poseStack.mulPose(com.mojang.math.Axis.YP.rotationDegrees(-(float)Math.toDegrees(entity.getYawAngle())));
         poseStack.mulPose(com.mojang.math.Axis.XP.rotationDegrees((float)Math.toDegrees(entity.getPitchAngle())));
         poseStack.mulPose(com.mojang.math.Axis.ZP.rotationDegrees((float)Math.toDegrees(entity.getRollAngle())));
         VertexConsumer vb = buffer.getBuffer(RenderType.entityCutout(TEXTURE));

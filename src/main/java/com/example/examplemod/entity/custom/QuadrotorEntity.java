@@ -1,7 +1,5 @@
 package com.example.examplemod.entity.custom;
 
-import java.util.UUID;
-
 import com.example.examplemod.autopilot.AutoController;
 import com.example.examplemod.autopilot.ControlCommand;
 import com.example.examplemod.autopilot.MotorState;
@@ -30,8 +28,6 @@ import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraftforge.network.NetworkHooks; 
 
 public class QuadrotorEntity extends Entity {
-    // controller player UUID
-    private UUID controllerUuid = null;
 
     // Synced motor thrust values (synced to clients)
     private static final EntityDataAccessor<Float> DATA_MOTOR1 = SynchedEntityData.defineId(QuadrotorEntity.class, EntityDataSerializers.FLOAT);
@@ -42,6 +38,7 @@ public class QuadrotorEntity extends Entity {
     private static final EntityDataAccessor<Float> DATA_PITCH_ANGLE = SynchedEntityData.defineId(QuadrotorEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DATA_YAW_ANGLE = SynchedEntityData.defineId(QuadrotorEntity.class, EntityDataSerializers.FLOAT);
 
+    // TODO:无人机区块加载
 
     // 推力控制变量
     private float motor1 = 0.0f;   // 电机1推力
@@ -50,10 +47,10 @@ public class QuadrotorEntity extends Entity {
     private float motor4 = 0.0f;   // 电机4推力 
 
     //电机位置
-    private final Vec3 motor1Pos = new Vec3(0.5, 0, 0.5);
-    private final Vec3 motor2Pos = new Vec3(-0.5, 0, 0.5);
-    private final Vec3 motor3Pos = new Vec3(-0.5, 0, -0.5);
-    private final Vec3 motor4Pos = new Vec3(0.5, 0, -0.5);
+    private final Vec3 motor1Pos = new Vec3(0.5, 0, 0.5);//左上角
+    private final Vec3 motor2Pos = new Vec3(-0.5, 0, 0.5);//右上角
+    private final Vec3 motor3Pos = new Vec3(-0.5, 0, -0.5);//右下角
+    private final Vec3 motor4Pos = new Vec3(0.5, 0, -0.5);//左下角
 
     // 运动状态
     private Vec3 velocity = Vec3.ZERO;
@@ -69,7 +66,7 @@ public class QuadrotorEntity extends Entity {
     private static final double MAX_THRUST = 0.7; // 每个电机最大推力（游戏/物理单位，需调参）
     private static final double MASS = 1.0;       // 无人机质量（单位）
     private static final double INERTIA = 0.03;   // 转动惯量（简化为标量）
-    private static final double K_YAW = 0.2;      // 由电机自旋产生的偏航力矩系数
+    private static final double K_YAW = 0.2;  // 由电机自旋产生的偏航力矩系数
     private static final double ANGULAR_DAMPING = 0.2; // 角速度阻尼
     private static final double LINEAR_DRAG = 0.02;    // 线速度阻尼（每 tick 的缩放量）
     private static final double DT = 1.0 / 20.0;      // tick 时步（秒）
@@ -84,6 +81,8 @@ public class QuadrotorEntity extends Entity {
         this.setNoGravity(true);
     }
 
+    
+
     @Override
     protected void defineSynchedData() {
         //同步电机推力的数据
@@ -96,6 +95,7 @@ public class QuadrotorEntity extends Entity {
         this.entityData.define(DATA_PITCH_ANGLE, 0.0f);
         this.entityData.define(DATA_YAW_ANGLE, 0.0f);
         
+
     }
 
     @Override
@@ -140,9 +140,6 @@ public class QuadrotorEntity extends Entity {
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
-        if (controllerUuid != null) {
-            tag.putUUID("ControllerRemote", controllerUuid);
-        }
         //额外存储电机转速值
         tag.putFloat("Motor1", this.motor1);
         tag.putFloat("Motor2", this.motor2);
@@ -178,21 +175,20 @@ public class QuadrotorEntity extends Entity {
         this.entityData.set(DATA_ROLL_ANGLE,roll);
     }
 
-
     @Override
     public void tick() {
         super.tick();
         this.setNoGravity(true);
 
         //服务端操作
-        if(!this.level().isClientSide()){
+        if(!this.level().isClientSide()){ 
 
             //应用自动控制
-            MotorState autoMotorState = this.autoController.Update(this, this.controlCommand);
-            this.setMotorState(autoMotorState);
+            //MotorState autoMotorState = this.autoController.Update(this, this.controlCommand);
+            //this.setMotorState(autoMotorState);
 
             //应用推力（计算机体坐标系中的推力与力矩 -> 转换到世界坐标系并积分）
-            // 每个电机推力（机体坐标系 +Y 为向上）
+            // 每个电机推力（机体坐标系 +Y 为向上），我们约定电机从上往下看顺时针旋转为正方向
             double t1 = this.motor1 * MAX_THRUST;
             double t2 = this.motor2 * MAX_THRUST;
             double t3 = this.motor3 * MAX_THRUST;
@@ -200,29 +196,36 @@ public class QuadrotorEntity extends Entity {
 
             double totalThrust = t1 + t2 + t3 + t4;
 
-            // 由 r x F 计算力矩（机体坐标系）
-            double torqueX = -(motor1Pos.z * t1 + motor2Pos.z * t2 + motor3Pos.z * t3 + motor4Pos.z * t4);
-            double torqueZ =  (motor1Pos.x * t1 + motor2Pos.x * t2 + motor3Pos.x * t3 + motor4Pos.x * t4);
-            // 偏航力矩（电机自旋产生的反扭矩，电机1和3为正旋，2和4为负旋）
-            double yawTorque = (t1 - t2 + t3 - t4) * K_YAW;
+            // // 由 r x F 计算力矩（机体坐标系）
+            // double torqueX = -(motor1Pos.z * t1 + motor2Pos.z * t2 + motor3Pos.z * t3 + motor4Pos.z * t4);
+            // double torqueZ =  (motor1Pos.x * t1 + motor2Pos.x * t2 + motor3Pos.x * t3 + motor4Pos.x * t4);
+            // // 偏航力矩（电机自旋产生的反扭矩，电机1和3为正旋，2和4为负旋）
+            // // 由于电机1和3的旋向是正的，因此它们给机体带来的扭矩就是负的
+            // double yawTorque = (-t1 + t2 - t3 + t4) * K_YAW;
 
-            Vec3 torque = new Vec3(torqueX, yawTorque, torqueZ);
+            // Vec3 torque = new Vec3(torqueX, yawTorque, torqueZ);
 
-            // 角加速度 alpha = torque / I
-            Vec3 angAccel = new Vec3(torque.x / INERTIA, torque.y / INERTIA, torque.z / INERTIA);
+            // // 角加速度 alpha = torque / I 这是在机体坐标系下的
+            // Vec3 angAccel = new Vec3(torque.x / INERTIA, torque.y / INERTIA, torque.z / INERTIA);
 
-            // 更新角速度并考虑角阻尼
-            angularVelocity = angularVelocity.add(angAccel.scale(DT));
-            angularVelocity = angularVelocity.scale(1.0 - ANGULAR_DAMPING);
+            // //更新角速度之前应该把角加速度转换到世界坐标系下
+            // angAccel = bodyToWorld(angAccel, getYawAngle(), getPitchAngle(), getRollAngle());
 
-            // 更新姿态角（弧度）
+            // // 更新角速度并考虑角阻尼
+            // angularVelocity = angularVelocity.add(angAccel.scale(DT));
+            // angularVelocity = angularVelocity.scale(1.0 - ANGULAR_DAMPING);
+
+            //调试：直接把命令转换成角速度
+            angularVelocity = new Vec3(controlCommand.referencePitch ,controlCommand.referenceYawSpeed, controlCommand.referenceRoll);
+
+            // 更新姿态角（弧度）不能这样更新！
             pitchAngle += angularVelocity.x * DT;
             yawAngle   += angularVelocity.y * DT;
             rollAngle  += angularVelocity.z * DT;
 
             // 将机体推力转换到世界坐标系并计算线性加速度
             Vec3 thrustBody = new Vec3(0, totalThrust, 0);
-            Vec3 thrustWorld = bodyToWorld(thrustBody, pitchAngle, rollAngle, yawAngle);
+            Vec3 thrustWorld = bodyToWorld(thrustBody, yawAngle, pitchAngle, rollAngle);
             Vec3 accel = thrustWorld.scale(1.0 / MASS);
 
             // 更新线性速度：积分加速度并加入重力、阻尼
@@ -230,6 +233,7 @@ public class QuadrotorEntity extends Entity {
             velocity = velocity.add(0, -GRAVITY * DT, 0);
 
             velocity = velocity.scale(1.0 - LINEAR_DRAG);
+            velocity = Vec3.ZERO;
 
             //防止在地面上时向下的速度累计
             if (this.onGround() && velocity.y < 0) {
@@ -240,7 +244,7 @@ public class QuadrotorEntity extends Entity {
             //this.move(MoverType.SELF, this.getDeltaMovement());
 
             // 更新实体显示用的角度（度）
-            this.setYRot(-(float)Math.toDegrees(yawAngle));
+            this.setYRot((float)Math.toDegrees(yawAngle));
             this.setXRot((float)Math.toDegrees(pitchAngle));
             this.entityData.set(DATA_ROLL_ANGLE, rollAngle);
             this.entityData.set(DATA_YAW_ANGLE, yawAngle);
@@ -250,8 +254,8 @@ public class QuadrotorEntity extends Entity {
             debugTick++;
             if (debugTick % 2 == 0 && !this.level().isClientSide()) {
                 this.setCustomName(Component.literal(String.format(
-                    "vel=%.2f,%.2f,%.2f | motors=%.2f,%.2f,%.2f,%.2f",
-                    velocity.x, velocity.y, velocity.z,
+                    "yaw %.2f,pitch %.2f,roll %.2f | motors=%.2f,%.2f,%.2f,%.2f",
+                    getYawAngle(),getPitchAngle(),getRollAngle(),
                     motor1, motor2, motor3, motor4
                 )));
             this.setCustomNameVisible(true);
@@ -267,9 +271,9 @@ public class QuadrotorEntity extends Entity {
             //this.move(MoverType.SELF, this.getDeltaMovement());
 
             //同步姿态数据
-            this.yawAngle = getYawAngle();
-            this.pitchAngle = getPitchAngle();
-            this.rollAngle = getRollAngle();
+            this.yawAngle = getSynchedYawAngle();
+            this.pitchAngle = getSynchedPitchAngle();
+            this.rollAngle = getSynchedRollAngle();
         }
 
 
@@ -299,7 +303,7 @@ public class QuadrotorEntity extends Entity {
     /**
      * 将机体坐标系向量转换为世界坐标系。使用的旋转顺序为：roll(绕Z) -> pitch(绕X) -> yaw(绕Y)，角度均为弧度。
      */
-    private Vec3 bodyToWorld(Vec3 v, double pitch, double roll, double yaw) {
+    private Vec3 bodyToWorld(Vec3 v, double yaw, double pitch, double roll) {
         double x = v.x;
         double y = v.y;
         double z = v.z;
@@ -320,9 +324,9 @@ public class QuadrotorEntity extends Entity {
         double y2 = y1 * cp - z1 * sp;
         double z2 = y1 * sp + z1 * cp;
         // yaw around Y
-        double x3 = x2 * cy + z2 * sy;
+        double x3 = x2 * cy - z2 * sy;
         double y3 = y2;
-        double z3 = -x2 * sy + z2 * cy;
+        double z3 = x2 * sy + z2 * cy;
 
         return new Vec3(x3, y3, z3);
     }
@@ -335,13 +339,13 @@ public class QuadrotorEntity extends Entity {
             float yaw = this.getYawAngle();
 
             // 电机位置从机体坐标系转换到世界坐标系
-            Vec3 offset = bodyToWorld(motorBodyPos, pitch, roll, yaw);
+            Vec3 offset = bodyToWorld(motorBodyPos, yaw, pitch, roll);
             double px = this.getX() + offset.x;
             double py = this.getY() + offset.y;
             double pz = this.getZ() + offset.z;
 
             // 推力方向（机体 +Y 方向转换到世界并取单位向量）
-            Vec3 thrustDir = bodyToWorld(new Vec3(0, 1, 0), pitch, roll, yaw).normalize();
+            Vec3 thrustDir = bodyToWorld(new Vec3(0, 1, 0), yaw, pitch, roll).normalize();
 
             // 我们希望粒子沿着推力的相反方向（看起来像喷射物向下喷出），速度与推力大小相关
             double speed = 0.1 + 0.4 * Math.abs(motorThrust);

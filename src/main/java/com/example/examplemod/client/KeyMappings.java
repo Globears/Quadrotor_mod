@@ -30,7 +30,12 @@ public class KeyMappings {
     public static final KeyMapping ROLL_RIGHT = new KeyMapping("key.examplemod.move_z_neg", GLFW.GLFW_KEY_K, "key.category.examplemod");
     //油门
     public static final KeyMapping THROTTLE = new KeyMapping("key.examplemod.throttle", GLFW.GLFW_KEY_UP, "key.category.examplemod");
-    
+    //油门减
+    public static final KeyMapping THROTTLE_N = new KeyMapping("key.examplemod.throttle_n", GLFW.GLFW_KEY_DOWN, "key.category.examplemod");
+    //右偏航
+    public static final KeyMapping YAW_RIGHT = new KeyMapping("key.examplemod.yaw_right", GLFW.GLFW_KEY_RIGHT, "key.category.examplemod");
+    //左偏航
+    public static final KeyMapping YAW_LEFT = new KeyMapping("key.examplemod.yaw_left", GLFW.GLFW_KEY_LEFT, "key.category.examplemod");
     
 
 
@@ -47,6 +52,9 @@ public class KeyMappings {
         event.register(com.example.examplemod.client.KeyMappings.ROLL_LEFT);
         event.register(com.example.examplemod.client.KeyMappings.ROLL_RIGHT);
         event.register(com.example.examplemod.client.KeyMappings.THROTTLE);
+        event.register(com.example.examplemod.client.KeyMappings.THROTTLE_N);
+        event.register(com.example.examplemod.client.KeyMappings.YAW_RIGHT);
+        event.register(com.example.examplemod.client.KeyMappings.YAW_LEFT);
     }
 
 }

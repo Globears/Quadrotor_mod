@@ -30,7 +30,7 @@ public class SimpleAutoController extends AutoController{
 
     // Angle controllers for pitch & roll (angle -> torque)
     private static final float KP_ANGLE = 2.5f;
-    private static final float KD_ANGLE = 0.6f;
+    private static final float KD_ANGLE = 0.6f; //原来是0.6
 
     // 机体常量（与 QuadrotorEntity 中的常量保持一致以便混控）
     private static final float K_YAW = 0.2f; // yaw 力矩系数（与实体中一致）
@@ -49,24 +49,25 @@ public class SimpleAutoController extends AutoController{
         float yaw = quadrotor.getYawAngle();
 
         // --- YAW rate PID (控制偏航角速度) ---
-        float currentYawRate = (yaw - lastYawAngle) / DT; // 近似角速度
-        float yawErrorRate = command.referenceYawSpeed - currentYawRate;
+        //float currentYawRate = (yaw - lastYawAngle) / DT; // 近似角速度
+        float yawErrorRate = command.referenceYawSpeed /*- currentYawRate*/;
         integralYawError += yawErrorRate * DT;
         // 防止积分发散（简单饱和）
         integralYawError = Math.max(-1.0f, Math.min(1.0f, integralYawError));
         float yawDerivative = (yawErrorRate - lastYawErrorRate) / DT;
         float yawControl = KP_YAW * yawErrorRate + KI_YAW * integralYawError + KD_YAW * yawDerivative;
         lastYawErrorRate = yawErrorRate;
-        lastYawAngle = yaw;
+        //lastYawAngle = yaw;
 
         // --- PITCH angle PD (控制俯仰角) ---
-        float pitchError = command.referencePitch - pitch;
+        float pitchError = command.referencePitch/* - pitch*/ ;
         float pitchDerivative = (pitchError - lastPitchError) / DT;
         float pitchControl = KP_ANGLE * pitchError + KD_ANGLE * pitchDerivative;
         lastPitchError = pitchError;
+        pitchControl = 0;
 
         // --- ROLL angle PD (控制横滚角) ---
-        float rollError = command.referenceRoll - roll;
+        float rollError = command.referenceRoll /* - roll*/;
         float rollDerivative = (rollError - lastRollError) / DT;
         float rollControl = KP_ANGLE * rollError + KD_ANGLE * rollDerivative;
         lastRollError = rollError;
@@ -79,19 +80,21 @@ public class SimpleAutoController extends AutoController{
 
         // --- Mixer 矩阵求解 (参考 QuadrotorEntity 的力矩定义)
         // 设：
-        // A = t1 + t2 + t3 + t4
-        // B = t1 + t2 - t3 - t4 = -2 * pitchTorque
-        // C = t1 - t2 - t3 + t4 = 2 * rollTorque
-        // D = t1 - t2 + t3 - t4 = yawTorque / K_YAW
+        // A =  t1 + t2 + t3 + t4
+        // B = -t1 - t2 + t3 + t4 = 2 * pitchTorque
+        // C =  t1 - t2 - t3 + t4 = 2 * rollTorque
+        // D = -t1 + t2 - t3 + t4 = yawTorque / K_YAW
 
-        float B = -2.0f * pitchControl;
+        float B =  2.0f * pitchControl;
         float C =  2.0f * rollControl;
         float D =  yawTorque / K_YAW;
+        //我们约定，向右偏航为正的偏航角，偏航角速度和偏航力矩也以该方向为正
+        // 无敌坐标系
 
-        float t1 = (A + B + C + D) / 4.0f;
-        float t2 = (A + B - C - D) / 4.0f;
-        float t3 = (A - B - C + D) / 4.0f;
-        float t4 = (A - B + C - D) / 4.0f;
+        float t1 = (A - B + C - D) / 4.0f;
+        float t2 = (A - B - C + D) / 4.0f;
+        float t3 = (A + B - C - D) / 4.0f;
+        float t4 = (A + B + C + D) / 4.0f;
 
         // 将结果限制在 [-1, 1]，并施加一点阻尼（模拟电机响应）
         motorState.motor1 = Math.max(0.0f, Math.min(1.0f, t1)) * 0.99f;
