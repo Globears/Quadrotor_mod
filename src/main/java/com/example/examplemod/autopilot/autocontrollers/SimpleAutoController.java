@@ -52,7 +52,7 @@ public class SimpleAutoController extends AutoController{
 
         float B =  2.0f * command.referencePitch;
         float C =  2.0f * command.referenceRoll;
-        float D =  command.referenceYawSpeed / K_YAW;
+        float D =  command.referenceYaw / K_YAW;
         //我们约定，向左偏航为正的偏航角，偏航角速度和偏航力矩也以该方向为正
         // 无敌坐标系
 

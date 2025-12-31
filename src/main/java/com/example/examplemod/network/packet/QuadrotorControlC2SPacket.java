@@ -50,7 +50,7 @@ public class QuadrotorControlC2SPacket {
         buffer.writeFloat(packet.motorState.motor4);
 
         buffer.writeFloat(packet.command.referenceThrottle);
-        buffer.writeFloat(packet.command.referenceYawSpeed);
+        buffer.writeFloat(packet.command.referenceYaw);
         buffer.writeFloat(packet.command.referencePitch);
         buffer.writeFloat(packet.command.referenceRoll);
 
@@ -79,7 +79,7 @@ public class QuadrotorControlC2SPacket {
         motorState.motor4 = motor4;
         ControlCommand command = new ControlCommand();
         command.referenceThrottle = referenceThrottle;
-        command.referenceYawSpeed = referenceYawSpeed;
+        command.referenceYaw = referenceYawSpeed;
         command.referencePitch = referencePitch;
         command.referenceRoll = referenceRoll;
         return new QuadrotorControlC2SPacket(motorState, command, quadrotorId);
@@ -103,11 +103,6 @@ public class QuadrotorControlC2SPacket {
                 quadrotor.setCommand(packet.command);
 
                 //调试用
-                Vector3f angVel = new Vector3f();
-                angVel.y = packet.command.referenceYawSpeed;
-                angVel.x = packet.command.referencePitch;
-                angVel.z = packet.command.referenceRoll;
-                quadrotor.setAngularVelocity(angVel);
             }
             
         });

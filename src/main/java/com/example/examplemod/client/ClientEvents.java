@@ -1,6 +1,10 @@
 package com.example.examplemod.client;
 
+import org.joml.Quaternionf;
+import org.joml.Quaternionfc;
+import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
+import org.joml.Math;
 
 import com.example.examplemod.ExampleMod;
 import com.example.examplemod.autopilot.ControlCommand;
@@ -76,29 +80,21 @@ public class ClientEvents {
         // 添加用户直观操作的指令（优先使用鼠标移动）
         //鼠标的前后移动控制俯仰角，左右移动控制滚转角
         command.referenceThrottle = 0.0f;
-        command.referenceYawSpeed = 0.0f;
+        command.referenceYaw = 0.0f;
         command.referencePitch = 0.0f;
         command.referenceRoll = 0.0f;
 
         // 使用按键控制油门
-        if (KeyMappings.THROTTLE.isDown()) {
-            throttle += 0.02f;
-            if(throttle > 1.0f) throttle = 1.0f;
-            command.referenceThrottle = throttle;
-        }else if (KeyMappings.THROTTLE_N.isDown()){
-            throttle -= 0.02f;
-            if(throttle < 0) throttle = 0;
-            command.referenceThrottle = throttle;
-        }else{
-            command.referenceThrottle = throttle;
+        if(KeyMappings.THROTTLE.isDown()){
+            command.referenceThrottle = 1.0f;
         }
 
         // 使用按键控制偏航
         if (KeyMappings.YAW_RIGHT.isDown()){
-            command.referenceYawSpeed = -0.2f;
+            command.referenceYaw = -0.2f;
         }
         if (KeyMappings.YAW_LEFT.isDown()){
-            command.referenceYawSpeed = +0.2f;
+            command.referenceYaw = +0.2f;
         }
 
         // 使用鼠标移动进行姿态控制（FPV 情况下）
@@ -146,7 +142,7 @@ public class ClientEvents {
             motorState.motor3 == old_motorState.motor3 &&
             motorState.motor4 == old_motorState.motor4 &&
             command.referenceThrottle == old_command.referenceThrottle &&
-            command.referenceYawSpeed == old_command.referenceYawSpeed &&
+            command.referenceYaw == old_command.referenceYaw &&
             command.referencePitch == old_command.referencePitch &&
             command.referenceRoll == old_command.referenceRoll)
             return; // 输入未变化，跳过发送
@@ -162,13 +158,9 @@ public class ClientEvents {
         
     }
 
-    //均为角度，方便直接用于渲染的函数
-    static float targetYaw = 0;
-    static float targetPitch = 0;
-    static float targetRoll = 0;
-    static float prevYaw = 0;
-    static float prevPitch = 0;
-    static float prevRoll = 0;
+    
+    static Quaternionf lastQuaternion = new Quaternionf();
+    static Quaternionf targetQuaternion = new Quaternionf();
     static float lastPartialTick = 0;
 
     @SubscribeEvent
@@ -178,45 +170,29 @@ public class ClientEvents {
         Camera camera = Minecraft.getInstance().gameRenderer.getMainCamera();
 
         if (camera.getEntity() instanceof QuadrotorEntity quad && quad.getId() == fpvEntityId) {
-            // QuadrotorEntity 存的是弧度，Renderer 使用度数 => 转换为度
-            float rollDeg = (float) Math.toDegrees(quad.getRollAngle());
-            float pitchDeg = (float) Math.toDegrees(quad.getPitchAngle());
-            float yawDeg = (float) Math.toDegrees(quad.getYawAngle());
-
-            float factor = 0;
-            //首先检查这一帧，服务端有没有提供新的角度，若有则更新角度
-            if(targetYaw != yawDeg || targetPitch != pitchDeg || targetRoll != rollDeg){
-                prevYaw = targetYaw;
-                prevPitch = targetPitch;
-                prevRoll = targetRoll;
-                targetYaw = yawDeg;
-                targetPitch = pitchDeg;
-                targetRoll = rollDeg;
-                factor = 0;// 一刻的开始
-            }else if(lastPartialTick > (float)event.getPartialTick()){
-                prevYaw = targetYaw;
-                prevPitch = targetPitch;
-                prevRoll = targetRoll;
-                targetYaw = yawDeg;
-                targetPitch = pitchDeg;
-                targetRoll = rollDeg;
-
-            }else{
-                factor = (float)event.getPartialTick();
+            //如果这是新的tick，更新姿态值
+            if(lastPartialTick > event.getPartialTick()){
+                lastQuaternion = targetQuaternion;
+                targetQuaternion = quad.getQuaternion();
             }
-
             lastPartialTick = (float)event.getPartialTick();
 
-            //然后进行从prev到target的平滑插值
-            
-            float currentYaw = prevYaw + (targetYaw - prevYaw) * factor;
-            float currentPitch = prevPitch + (targetPitch - prevPitch) * factor;
-            float currentRoll = prevRoll + (targetRoll - prevRoll) * factor;
+            //根据partialTick进行四元数的插值
+            Quaternionf currentQuaternion = new Quaternionf();
+            currentQuaternion = lastQuaternion;
+            currentQuaternion = currentQuaternion.slerp(targetQuaternion, lastPartialTick);
 
+            //转换为欧拉角
+            Vector3f eular = new Vector3f();
+            eular = currentQuaternion.getEulerAnglesYXZ(eular);
+            float yaw = eular.y * 180.0f / (float)Math.PI;
+            float pitch = eular.x * 180.0f / (float)Math.PI;
+            float roll = eular.z * 180.0f / (float)Math.PI;
+            
             //设置角度
-            event.setYaw(-currentYaw);
-            event.setPitch(currentPitch);
-            event.setRoll(currentRoll);
+            event.setYaw(-yaw);
+            event.setPitch(pitch);
+            event.setRoll(roll);
             
         }
     }

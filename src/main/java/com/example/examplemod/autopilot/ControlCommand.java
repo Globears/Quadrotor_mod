@@ -5,7 +5,7 @@ public class ControlCommand {
 
     //输入量
     public float referenceThrottle; //0.0 ~ 1.0
-    public float referenceYawSpeed; //-1.0 ~ 1.0
+    public float referenceYaw; //-1.0 ~ 1.0
     public float referencePitch;    //-1.0 ~ 1.0 
     public float referenceRoll;     //-1.0 ~ 1.0 
     

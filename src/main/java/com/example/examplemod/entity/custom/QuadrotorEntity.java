@@ -46,6 +46,10 @@ public class QuadrotorEntity extends Entity {
     private static final EntityDataAccessor<Float> DATA_ROLL_SPEED = SynchedEntityData.defineId(QuadrotorEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DATA_PITCH_SPEED = SynchedEntityData.defineId(QuadrotorEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DATA_YAW_SPEED = SynchedEntityData.defineId(QuadrotorEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_QUATERNION_W = SynchedEntityData.defineId(QuadrotorEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_QUATERNION_X = SynchedEntityData.defineId(QuadrotorEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_QUATERNION_Y = SynchedEntityData.defineId(QuadrotorEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_QUATERNION_Z = SynchedEntityData.defineId(QuadrotorEntity.class, EntityDataSerializers.FLOAT);
 
 
     // 推力控制变量
@@ -64,12 +68,11 @@ public class QuadrotorEntity extends Entity {
     private Vec3 velocity = Vec3.ZERO;
     private int debugTick = 0;
 
-    // 角速度
-    private Vec3 angularVelocity = Vec3.ZERO; 
+    // 角速度（机体轴系下）
     private Vector3f angularVelocityBody = new Vector3f();
 
     //四元数姿态
-    public Quaterniond quaternion = new Quaterniond();
+    public Quaternionf quaternion = new Quaternionf();
     
     // 欧拉角（仅用于显示和同步，从四元数计算得到）
     private float rollAngle = 0.0f;  
@@ -108,6 +111,11 @@ public class QuadrotorEntity extends Entity {
         this.entityData.define(DATA_ROLL_SPEED, 0.0f);
         this.entityData.define(DATA_PITCH_SPEED, 0.0f);
         this.entityData.define(DATA_YAW_SPEED, 0.0f);
+
+        this.entityData.define(DATA_QUATERNION_W, 1.0f);
+        this.entityData.define(DATA_QUATERNION_X, 0.0f);
+        this.entityData.define(DATA_QUATERNION_Y, 0.0f);
+        this.entityData.define(DATA_QUATERNION_Z, 0.0f);
     }
 
     @Override
@@ -127,6 +135,8 @@ public class QuadrotorEntity extends Entity {
             float t3 = this.motor3 * MAX_THRUST;
             float t4 = this.motor4 * MAX_THRUST;
 
+            
+
             // 力矩计算（机体坐标系）
             float yawTorque = (-t1 + t2 - t3 + t4) * K_YAW; 
             float pitchTorque = (t3 + t4) - (t1 + t2);     
@@ -140,15 +150,15 @@ public class QuadrotorEntity extends Entity {
             );
 
             // 计算机体轴系下新的角速度,记得应用阻尼
-            // angularVelocityBody = angularVelocityBody.add(angularAccelBody);
+            angularVelocityBody = angularVelocityBody.add(angularAccelBody);
             angularVelocityBody.mul(1 - ANGULAR_DAMPING);
 
             // 该角速度会在这一游戏刻造成旋转，把这个旋转写成四元数的形式
             if (angularVelocityBody.lengthSquared() > 1.0E-7) {
-                double angle = angularVelocityBody.length();
+                float angle = angularVelocityBody.length();
                 Vector3f axis = new Vector3f(angularVelocityBody).normalize();
         
-                Quaterniond delta_rotation = new Quaterniond().fromAxisAngleRad(axis.x, axis.y, axis.z, angle);
+                Quaternionf delta_rotation = new Quaternionf().fromAxisAngleRad(axis.x, axis.y, axis.z, angle);
             
                 // 计算该游戏刻的最终姿态：将之前的姿态和该旋转相乘
                 quaternion = quaternion.mul(delta_rotation);
@@ -157,16 +167,12 @@ public class QuadrotorEntity extends Entity {
             //四元数归一化，防止误差积累
             quaternion.normalize();
 
-            // 把四元数姿态同步给欧拉角
-            Vector3d eular = new Vector3d();
+            // 更新欧拉角
+            Vector3f eular = new Vector3f();
             quaternion.getEulerAnglesYXZ(eular);
             yawAngle = (float)eular.y;
             pitchAngle = (float)eular.x;
             rollAngle = (float)eular.z;
-            
-            // 清除Z轴速度（你之前有velocity = Vec3.ZERO; 但我认为这不是你想要的）
-            // 如果不需要固定速度，请注释掉下面这行
-            velocity = Vec3.ZERO;
 
             // 防止在地面上时向下的速度累计
             if (this.onGround() && velocity.y < 0) {
@@ -183,6 +189,7 @@ public class QuadrotorEntity extends Entity {
             this.entityData.set(DATA_ROLL_ANGLE, rollAngle);
             this.entityData.set(DATA_YAW_ANGLE, yawAngle);
             this.entityData.set(DATA_PITCH_ANGLE, pitchAngle);
+            this.syncQuaternion(quaternion);
 
 
             
@@ -205,10 +212,12 @@ public class QuadrotorEntity extends Entity {
             spawnMotorParticle(motor3Pos, this.entityData.get(DATA_MOTOR3));
             spawnMotorParticle(motor4Pos, this.entityData.get(DATA_MOTOR4));
             
-            // 同步数据
+            // 将服务端数据同步到客户端
             this.yawAngle = getSynchedYawAngle();
             this.pitchAngle = getSynchedPitchAngle();
             this.rollAngle = getSynchedRollAngle();
+            this.quaternion = this.getSynchedQuaternion();
+            
         }
 
         this.move(MoverType.SELF, this.getDeltaMovement());
@@ -335,15 +344,15 @@ public class QuadrotorEntity extends Entity {
         setMotorState(motorState.motor1, motorState.motor2, motorState.motor3, motorState.motor4);
     }
 
-    public float getSynchedYawAngle(){
+    private float getSynchedYawAngle(){
         return this.entityData.get(DATA_YAW_ANGLE);
     }
 
-    public float getSynchedPitchAngle(){
+    private float getSynchedPitchAngle(){
         return this.entityData.get(DATA_PITCH_ANGLE);
     }
 
-    public float getSynchedRollAngle(){
+    private float getSynchedRollAngle(){
         return this.entityData.get(DATA_ROLL_ANGLE);
     }
 
@@ -359,15 +368,15 @@ public class QuadrotorEntity extends Entity {
         return this.rollAngle;
     }
 
-    public float getSynchedYawSpeed(){
+    private float getSynchedYawSpeed(){
         return this.entityData.get(DATA_YAW_SPEED);
     }
 
-    public float getSynchedPitchSpeed(){
+    private float getSynchedPitchSpeed(){
         return this.entityData.get(DATA_PITCH_SPEED);
     }
 
-    public float getSynchedRollSpeed(){
+    private float getSynchedRollSpeed(){
         return this.entityData.get(DATA_ROLL_SPEED);
     }
 
@@ -390,4 +399,29 @@ public class QuadrotorEntity extends Entity {
 
         this.angularVelocityBody = angularVel;
     }
+
+    private void syncQuaternion(Quaternionf quat){
+        this.entityData.set(DATA_QUATERNION_W, quat.w);
+        this.entityData.set(DATA_QUATERNION_X, quat.x);
+        this.entityData.set(DATA_QUATERNION_Y, quat.y);
+        this.entityData.set(DATA_QUATERNION_Z, quat.z);
+    }
+
+    private Quaternionf getSynchedQuaternion(){
+        float w = this.entityData.get(DATA_QUATERNION_W);
+        float x = this.entityData.get(DATA_QUATERNION_X);
+        float y = this.entityData.get(DATA_QUATERNION_Y);
+        float z = this.entityData.get(DATA_QUATERNION_Z);
+
+        return new Quaternionf(x, y, z, w);
+    }
+
+    public Quaternionf getQuaternion(){
+        return quaternion;
+    }
+    
+
+
+
+
 }
