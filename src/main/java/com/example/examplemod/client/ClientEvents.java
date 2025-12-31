@@ -39,7 +39,7 @@ public class ClientEvents {
     private static double lastCursorX = 0.0;
     private static double lastCursorY = 0.0;
     private static final float MOUSE_SENSITIVITY = 0.05f; // 映射系数（可调）
-    private static final float MOUSE_PIXELS_TO_RAD = 0.03f; // 像素位移 -> 弧度（需调参）
+    private static final float MOUSE_SCALE_FACTOR = 0.3f; // 像素位移 -> 弧度（需调参）
     private static final double MOUSE_PIXELS_DEADZONE = 1.0; // 小于该像素变化视为未移动
 
     private static float throttle = 0.0f;
@@ -48,13 +48,23 @@ public class ClientEvents {
     private static boolean fpvActive = false;
     private static int fpvEntityId = -1;
 
+    //锁定玩家模型避免乱晃
+    private static float lockedYaw;
+    private static float lockedPitch;
+
     public static void setFPV(boolean active, int entityId) {
         fpvActive = active;
         fpvEntityId = entityId;
         // 重置鼠标初始状态以免突变
         cursorInit = false;
         // 退出 FPV 时重置旧输入以避免向服务端发送脏指令
-        if (!active) {
+        if (active) {
+            Minecraft mc = Minecraft.getInstance();
+            if(mc.player != null){
+                lockedYaw = mc.player.getYRot();
+                lockedPitch = mc.player.getXRot();
+            }
+        } else{
             old_command = new ControlCommand();
             old_motorState = new MotorState();
         }
@@ -70,7 +80,14 @@ public class ClientEvents {
         MotorState motorState = new MotorState();
         ControlCommand command = new ControlCommand();
 
-        
+        if(fpvActive){
+            mc.player.setYRot(lockedYaw);
+            mc.player.setXRot(lockedPitch);
+            mc.player.yRotO = lockedYaw;
+            mc.player.xRotO = lockedPitch;
+            mc.player.yHeadRot = lockedYaw;
+            mc.player.yHeadRotO = lockedYaw;
+        }
 
         // 添加直接的电机指令（便于测试刚体动力学）
         motorState.motor1 = KeyMappings.MOTOR_1.isDown() ? 1f : 0.0f;
@@ -124,8 +141,8 @@ public class ClientEvents {
             if (Math.abs(dy) < MOUSE_PIXELS_DEADZONE) dy = 0.0;
 
             // 映射到参考俯仰/滚转/偏航速度
-            command.referencePitch = (float)(-dy * MOUSE_PIXELS_TO_RAD * MOUSE_SENSITIVITY);
-            command.referenceRoll = (float)(dx * MOUSE_PIXELS_TO_RAD * MOUSE_SENSITIVITY);
+            command.referencePitch = (float)(-dy * MOUSE_SCALE_FACTOR * MOUSE_SENSITIVITY);
+            command.referenceRoll = (float)(dx * MOUSE_SCALE_FACTOR * MOUSE_SENSITIVITY);
         }
 
         // 检查是否手持遥控器（主手或副手）
