@@ -38,8 +38,9 @@ public class ClientEvents {
     private static boolean cursorInit = false;
     private static double lastCursorX = 0.0;
     private static double lastCursorY = 0.0;
-    private static final float MOUSE_SENSITIVITY = 0.05f; // 映射系数（可调）
-    private static final float MOUSE_SCALE_FACTOR = 0.3f; // 像素位移 -> 弧度（需调参）
+    private static final float MOUSE_SENSITIVITY = 0.05f; // 灵敏度
+    private static final float MOUSE_SCALE_FACTOR = 0.3f; // 映射比例系数
+    private static final float YAW_SPEED = 1.0f;
     private static final double MOUSE_PIXELS_DEADZONE = 1.0; // 小于该像素变化视为未移动
 
     private static float throttle = 0.0f;
@@ -109,10 +110,10 @@ public class ClientEvents {
 
         // 使用按键控制偏航
         if (KeyMappings.YAW_RIGHT.isDown()){
-            command.referenceYaw = -0.2f;
+            command.referenceYaw = -YAW_SPEED;
         }
         if (KeyMappings.YAW_LEFT.isDown()){
-            command.referenceYaw = +0.2f;
+            command.referenceYaw = +YAW_SPEED;
         }
 
         // 使用鼠标移动进行姿态控制（FPV 情况下）

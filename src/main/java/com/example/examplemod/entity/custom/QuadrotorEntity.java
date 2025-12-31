@@ -65,7 +65,7 @@ public class QuadrotorEntity extends Entity {
     private final Vec3 motor4Pos = new Vec3(0.5, 0, -0.5);//左下角
 
     // 运动状态
-    private Vec3 velocity = Vec3.ZERO;
+    private Vector3f velocity = new Vector3f();
     private int debugTick = 0;
 
     // 角速度（机体轴系下）
@@ -135,7 +135,12 @@ public class QuadrotorEntity extends Entity {
             float t3 = this.motor3 * MAX_THRUST;
             float t4 = this.motor4 * MAX_THRUST;
 
-            
+            Vector3f accel = new Vector3f(0, t1 + t2 + t3 + t4, 0);
+            accel.rotate(quaternion);
+            accel.mul(0.015f);
+            velocity.add(accel);
+            velocity.add(0,-0.015f, 0);
+            velocity.mul(0.98f);
 
             // 力矩计算（机体坐标系）
             float yawTorque = (-t1 + t2 - t3 + t4) * K_YAW; 
@@ -176,10 +181,10 @@ public class QuadrotorEntity extends Entity {
 
             // 防止在地面上时向下的速度累计
             if (this.onGround() && velocity.y < 0) {
-                velocity = new Vec3(velocity.x, 0, velocity.z);
+                velocity = new Vector3f(velocity.x, 0, velocity.z);
             }
 
-            this.setDeltaMovement(velocity);
+            this.setDeltaMovement(new Vec3(velocity));
             
             // 更新实体显示用的角度（度）
             this.setYRot(-(float)Math.toDegrees(yawAngle));
@@ -197,8 +202,8 @@ public class QuadrotorEntity extends Entity {
             debugTick++;
             if (debugTick % 2 == 0) {
                 this.setCustomName(Component.literal(String.format(
-                    "yaw %.2f,pitch %.2f,roll %.2f | motors=%.2f,%.2f,%.2f,%.2f",
-                    yawAngle, pitchAngle, rollAngle,
+                    "velx=%.2f, vely=%.2f, velz=%.2f | motors=%.2f,%.2f,%.2f,%.2f",
+                    velocity.x, velocity.y, velocity.z,
                     motor1, motor2, motor3, motor4
                 )));
                 this.setCustomNameVisible(true);
