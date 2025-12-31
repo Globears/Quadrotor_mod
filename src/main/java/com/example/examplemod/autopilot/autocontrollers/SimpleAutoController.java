@@ -43,40 +43,6 @@ public class SimpleAutoController extends AutoController{
         float base = command.referenceThrottle * 0.5f; // 每电机基础推力
         float A = base * 4.0f; // 总推力（用于混控矩阵）
 
-        // 读取当前姿态角（弧度）
-        float pitch = quadrotor.getPitchAngle();
-        float roll = quadrotor.getRollAngle();
-        float yaw = quadrotor.getYawAngle();
-
-        // --- YAW rate PID (控制偏航角速度) ---
-        //float currentYawRate = (yaw - lastYawAngle) / DT; // 近似角速度
-        float yawErrorRate = command.referenceYawSpeed /*- currentYawRate*/;
-        integralYawError += yawErrorRate * DT;
-        // 防止积分发散（简单饱和）
-        integralYawError = Math.max(-1.0f, Math.min(1.0f, integralYawError));
-        float yawDerivative = (yawErrorRate - lastYawErrorRate) / DT;
-        float yawControl = KP_YAW * yawErrorRate + KI_YAW * integralYawError + KD_YAW * yawDerivative;
-        lastYawErrorRate = yawErrorRate;
-        //lastYawAngle = yaw;
-
-        // --- PITCH angle PD (控制俯仰角) ---
-        float pitchError = command.referencePitch/* - pitch*/ ;
-        float pitchDerivative = (pitchError - lastPitchError) / DT;
-        float pitchControl = KP_ANGLE * pitchError + KD_ANGLE * pitchDerivative;
-        lastPitchError = pitchError;
-
-        // --- ROLL angle PD (控制横滚角) ---
-        float rollError = command.referenceRoll /* - roll*/;
-        float rollDerivative = (rollError - lastRollError) / DT;
-        float rollControl = KP_ANGLE * rollError + KD_ANGLE * rollDerivative;
-        lastRollError = rollError;
-
-        // 限幅以避免产生过大的力矩（可根据需要调整）
-        float maxTorque = 2.0f; // 单位为与推力同标度的任意量
-        pitchControl = Math.max(-maxTorque, Math.min(maxTorque, pitchControl));
-        rollControl = Math.max(-maxTorque, Math.min(maxTorque, rollControl));
-        float yawTorque = Math.max(-maxTorque, Math.min(maxTorque, yawControl));
-
         // --- Mixer 矩阵求解 (参考 QuadrotorEntity 的力矩定义)
         // 设：
         // A =  t1 + t2 + t3 + t4
@@ -87,7 +53,7 @@ public class SimpleAutoController extends AutoController{
         float B =  2.0f * command.referencePitch;
         float C =  2.0f * command.referenceRoll;
         float D =  command.referenceYawSpeed / K_YAW;
-        //我们约定，向右偏航为正的偏航角，偏航角速度和偏航力矩也以该方向为正
+        //我们约定，向左偏航为正的偏航角，偏航角速度和偏航力矩也以该方向为正
         // 无敌坐标系
 
         float t1 = (A - B + C - D) / 4.0f;

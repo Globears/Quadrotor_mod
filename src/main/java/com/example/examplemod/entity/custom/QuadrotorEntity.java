@@ -134,20 +134,28 @@ public class QuadrotorEntity extends Entity {
             
             // 机体坐标系的角加速度
             Vector3f angularAccelBody = new Vector3f(
-                yawTorque / INERTIA,
                 pitchTorque / INERTIA,
+                yawTorque / INERTIA,
                 rollTorque / INERTIA
             );
 
             // 计算机体轴系下新的角速度,记得应用阻尼
-            angularVelocityBody = angularVelocityBody.add(angularAccelBody);
+            // angularVelocityBody = angularVelocityBody.add(angularAccelBody);
             angularVelocityBody.mul(1 - ANGULAR_DAMPING);
 
             // 该角速度会在这一游戏刻造成旋转，把这个旋转写成四元数的形式
-            Quaterniond delta_rotation = new Quaterniond().rotateYXZ(angularVelocityBody.y, angularVelocityBody.x, angularVelocityBody.z);
+            if (angularVelocityBody.lengthSquared() > 1.0E-7) {
+                double angle = angularVelocityBody.length();
+                Vector3f axis = new Vector3f(angularVelocityBody).normalize();
+        
+                Quaterniond delta_rotation = new Quaterniond().fromAxisAngleRad(axis.x, axis.y, axis.z, angle);
+            
+                // 计算该游戏刻的最终姿态：将之前的姿态和该旋转相乘
+                quaternion = quaternion.mul(delta_rotation);
+            }
 
-            // 计算该游戏刻的最终姿态：将之前的姿态和该旋转相乘
-            quaternion = quaternion.mul(delta_rotation);
+            //四元数归一化，防止误差积累
+            quaternion.normalize();
 
             // 把四元数姿态同步给欧拉角
             Vector3d eular = new Vector3d();
@@ -168,7 +176,7 @@ public class QuadrotorEntity extends Entity {
             this.setDeltaMovement(velocity);
             
             // 更新实体显示用的角度（度）
-            this.setYRot((float)Math.toDegrees(yawAngle));
+            this.setYRot(-(float)Math.toDegrees(yawAngle));
             this.setXRot((float)Math.toDegrees(pitchAngle));
             
             // 同步数据到客户端
@@ -364,18 +372,22 @@ public class QuadrotorEntity extends Entity {
     }
 
     public float getYawSpeed(){
-        return (float)this.angularVelocity.y;
+        return (float)this.angularVelocityBody.y;
     }
 
     public float getPitchSpeed(){
-        return (float)this.angularVelocity.x;
+        return (float)this.angularVelocityBody.x;
     }
 
     public float getRollSpeed(){
-        return (float)this.angularVelocity.z;
+        return (float)this.angularVelocityBody.z;
     }
 
     public void setAngularVelocity(Vector3f angularVel){
+        this.entityData.set(DATA_YAW_SPEED, angularVel.y);
+        this.entityData.set(DATA_PITCH_SPEED, angularVel.x);
+        this.entityData.set(DATA_ROLL_SPEED, angularVel.y);
 
+        this.angularVelocityBody = angularVel;
     }
 }

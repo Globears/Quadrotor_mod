@@ -12,6 +12,8 @@ import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;
 
+import org.joml.Vector3f;
+
 
 public class QuadrotorControlC2SPacket {
     //该数据包传输玩家的控制指令，要控制的无人机，还可能有四个电机的状态（调试用）
@@ -99,6 +101,13 @@ public class QuadrotorControlC2SPacket {
             if(quad instanceof QuadrotorEntity){
                 QuadrotorEntity quadrotor = (QuadrotorEntity)quad;
                 quadrotor.setCommand(packet.command);
+
+                //调试用
+                Vector3f angVel = new Vector3f();
+                angVel.y = packet.command.referenceYawSpeed;
+                angVel.x = packet.command.referencePitch;
+                angVel.z = packet.command.referenceRoll;
+                quadrotor.setAngularVelocity(angVel);
             }
             
         });

@@ -95,10 +95,10 @@ public class ClientEvents {
 
         // 使用按键控制偏航
         if (KeyMappings.YAW_RIGHT.isDown()){
-            command.referenceYawSpeed = 1f;
+            command.referenceYawSpeed = -0.2f;
         }
         if (KeyMappings.YAW_LEFT.isDown()){
-            command.referenceYawSpeed = -1f;
+            command.referenceYawSpeed = +0.2f;
         }
 
         // 使用鼠标移动进行姿态控制（FPV 情况下）
@@ -169,6 +169,7 @@ public class ClientEvents {
     static float prevYaw = 0;
     static float prevPitch = 0;
     static float prevRoll = 0;
+    static float lastPartialTick = 0;
 
     @SubscribeEvent
     public static void onCameraSetup(ViewportEvent.ComputeCameraAngles event) {
@@ -182,7 +183,7 @@ public class ClientEvents {
             float pitchDeg = (float) Math.toDegrees(quad.getPitchAngle());
             float yawDeg = (float) Math.toDegrees(quad.getYawAngle());
 
-            float factor;
+            float factor = 0;
             //首先检查这一帧，服务端有没有提供新的角度，若有则更新角度
             if(targetYaw != yawDeg || targetPitch != pitchDeg || targetRoll != rollDeg){
                 prevYaw = targetYaw;
@@ -192,9 +193,19 @@ public class ClientEvents {
                 targetPitch = pitchDeg;
                 targetRoll = rollDeg;
                 factor = 0;// 一刻的开始
+            }else if(lastPartialTick > (float)event.getPartialTick()){
+                prevYaw = targetYaw;
+                prevPitch = targetPitch;
+                prevRoll = targetRoll;
+                targetYaw = yawDeg;
+                targetPitch = pitchDeg;
+                targetRoll = rollDeg;
+
             }else{
                 factor = (float)event.getPartialTick();
             }
+
+            lastPartialTick = (float)event.getPartialTick();
 
             //然后进行从prev到target的平滑插值
             
@@ -203,7 +214,7 @@ public class ClientEvents {
             float currentRoll = prevRoll + (targetRoll - prevRoll) * factor;
 
             //设置角度
-            event.setYaw(currentYaw);
+            event.setYaw(-currentYaw);
             event.setPitch(currentPitch);
             event.setRoll(currentRoll);
             
