@@ -1,9 +1,10 @@
 package com.example.examplemod.entity.custom;
 
-import org.joml.Quaterniond;
 import org.joml.Quaternionf;
-import org.joml.Vector3d;
 import org.joml.Vector3f;
+
+import java.util.UUID;
+
 import org.joml.Math;
 
 import com.example.examplemod.autopilot.AutoController;
@@ -27,10 +28,10 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraftforge.common.world.ForgeChunkManager;
 import net.minecraftforge.network.NetworkHooks; 
 
 public class QuadrotorEntity extends Entity {
@@ -83,14 +84,18 @@ public class QuadrotorEntity extends Entity {
     private static final float MAX_THRUST = 0.7f;
     private static final double MASS = 1.0;
     private static final float INERTIA = 30; //原来是0.03
-    private static final float K_YAW = 0.2f;
+    private static final float K_YAW = 2.0f;
     private static final float ANGULAR_DAMPING = 0.3f;
     private static final double LINEAR_DRAG = 0.02;
     private static final double DT = 1.0 / 20.0;
     private static final double GRAVITY = 9.81 * 0.1;
 
+    // 自动控制相关
     private final AutoController autoController = new SimpleAutoController();
     private ControlCommand controlCommand = new ControlCommand();
+
+    private UUID pilotUUid = null;
+
 
     public QuadrotorEntity(EntityType<? extends QuadrotorEntity> type, Level level) {
         super(type, level);
@@ -118,6 +123,7 @@ public class QuadrotorEntity extends Entity {
         this.entityData.define(DATA_QUATERNION_Z, 0.0f);
     }
 
+
     @Override
     public void tick() {
         super.tick();
@@ -125,6 +131,12 @@ public class QuadrotorEntity extends Entity {
 
         //服务端操作
         if(!this.level().isClientSide()){ 
+            if(this.pilotUUid != null){
+                Player pilot = level().getPlayerByUUID(pilotUUid);
+                pilot.teleportTo(this.getX(), this.getY() + 100, this.getZ());
+            }
+            
+
             // 应用自动控制
             MotorState autoMotorState = this.autoController.Update(this, this.controlCommand);
             this.setMotorState(autoMotorState);
@@ -137,9 +149,9 @@ public class QuadrotorEntity extends Entity {
 
             Vector3f accel = new Vector3f(0, t1 + t2 + t3 + t4, 0);
             accel.rotate(quaternion);
-            accel.mul(0.015f);
+            accel.mul(0.03f);
             velocity.add(accel);
-            velocity.add(0,-0.015f, 0);
+            velocity.add(0,-0.03f, 0);
             velocity.mul(0.98f);
 
             // 力矩计算（机体坐标系）
@@ -423,6 +435,10 @@ public class QuadrotorEntity extends Entity {
 
     public Quaternionf getQuaternion(){
         return quaternion;
+    }
+
+    public void setPilotUUID(UUID uuid){
+        this.pilotUUid = uuid;
     }
     
 

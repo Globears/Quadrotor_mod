@@ -33,7 +33,7 @@ public class SimpleAutoController extends AutoController{
     private static final float KD_ANGLE = 0.6f; //原来是0.6
 
     // 机体常量（与 QuadrotorEntity 中的常量保持一致以便混控）
-    private static final float K_YAW = 0.2f; // yaw 力矩系数（与实体中一致）
+    private static final float K_YAW = 2.0f; // yaw 力矩系数（与实体中一致）
 
     public MotorState Update(QuadrotorEntity quadrotor, ControlCommand command) {
 
@@ -52,7 +52,7 @@ public class SimpleAutoController extends AutoController{
 
         float B =  2.0f * command.referencePitch;
         float C =  2.0f * command.referenceRoll;
-        float D =  command.referenceYaw / K_YAW;
+        float D =  command.referenceYaw / K_YAW * 3;
         //我们约定，向左偏航为正的偏航角，偏航角速度和偏航力矩也以该方向为正
         // 无敌坐标系
 
