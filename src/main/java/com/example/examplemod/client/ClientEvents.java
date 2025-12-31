@@ -22,6 +22,7 @@ import java.nio.DoubleBuffer;
 import com.example.examplemod.item.RemoteController;
 
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.RenderHandEvent;
 import net.minecraftforge.client.event.ViewportEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -179,7 +180,7 @@ public class ClientEvents {
 
             //根据partialTick进行四元数的插值
             Quaternionf currentQuaternion = new Quaternionf();
-            currentQuaternion = lastQuaternion;
+            currentQuaternion.set(lastQuaternion);
             currentQuaternion = currentQuaternion.slerp(targetQuaternion, lastPartialTick);
 
             //转换为欧拉角
@@ -195,5 +196,13 @@ public class ClientEvents {
             event.setRoll(roll);
             
         }
+    }
+
+    @SubscribeEvent
+    public static void onRenderHandEvent(RenderHandEvent event){
+        if(fpvActive){
+            event.setCanceled(true);
+        }
+
     }
 }
