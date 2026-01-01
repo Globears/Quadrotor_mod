@@ -1,6 +1,8 @@
 package com.example.examplemod.entity.client;
 
 import org.joml.Quaternionf;
+import org.joml.Vector3f;
+import org.joml.Math;
 
 import com.example.examplemod.ExampleMod;
 import com.example.examplemod.entity.custom.QuadrotorEntity;
@@ -31,8 +33,15 @@ public class QuadrotorRenderer extends EntityRenderer<QuadrotorEntity> {
         // Translate so the model sits at entity feet as intended by the model (bb_main was offset to y=24)
         // Apply entity orientation (yaw/pitch) and roll so the visual model matches physics
         
-        Quaternionf quaternionf = entity.getQuaternion();
-        poseStack.mulPose(quaternionf);
+        Quaternionf targetQuaternion = new Quaternionf();
+        Quaternionf prevQuaternion = new Quaternionf();
+        Quaternionf currentQuaternion = new Quaternionf();
+
+        targetQuaternion.set(entity.getQuaternion());
+        prevQuaternion.set(entity.getPrevQuaternion());
+        currentQuaternion = prevQuaternion.slerp(targetQuaternion, partialTicks);
+
+        poseStack.mulPose(currentQuaternion);
         
 
 
