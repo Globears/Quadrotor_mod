@@ -29,14 +29,14 @@ public class RemoteController extends Item {
             if(player.isShiftKeyDown()){
                 ItemStack remoteController = player.getMainHandItem();
                 int quadrotorId = getPairedQuadrotorId(remoteController);
-                ModNetwork.CHANNEL.sendToServer(new QuadrotorFPVRequestC2SPacket(quadrotorId, null));
+                ModNetwork.CHANNEL.sendToServer(new QuadrotorFPVRequestC2SPacket(quadrotorId, false));
                 return InteractionResultHolder.success(player.getItemInHand(hand));
             }
             
             // 如果是正常右键，则进入绑定的无人机的fpv
             ItemStack remoteController = player.getMainHandItem();
             int quadrotorId = getPairedQuadrotorId(remoteController);
-            ModNetwork.CHANNEL.sendToServer(new QuadrotorFPVRequestC2SPacket(quadrotorId, player.getUUID()));
+            ModNetwork.CHANNEL.sendToServer(new QuadrotorFPVRequestC2SPacket(quadrotorId, true));
             
             return InteractionResultHolder.success(player.getItemInHand(hand));
         }
