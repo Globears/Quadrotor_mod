@@ -178,10 +178,6 @@ public class ClientEvents {
         
     }
 
-    
-    static Quaternionf lastQuaternion = new Quaternionf();
-    static Quaternionf targetQuaternion = new Quaternionf();
-    static float lastPartialTick = 0;
 
     @SubscribeEvent
     public static void onCameraSetup(ViewportEvent.ComputeCameraAngles event) {
@@ -190,17 +186,14 @@ public class ClientEvents {
         Camera camera = Minecraft.getInstance().gameRenderer.getMainCamera();
 
         if (camera.getEntity() instanceof QuadrotorEntity quad && quad.getId() == fpvEntityId) {
-            //如果这是新的tick，更新姿态值
-            if(lastPartialTick > event.getPartialTick()){
-                lastQuaternion = targetQuaternion;
-                targetQuaternion = quad.getQuaternion();
-            }
-            lastPartialTick = (float)event.getPartialTick();
 
             //根据partialTick进行四元数的插值
+            Quaternionf targetQuaternion = new Quaternionf();
+            Quaternionf prevQuaternion = new Quaternionf();
             Quaternionf currentQuaternion = new Quaternionf();
-            currentQuaternion.set(lastQuaternion);
-            currentQuaternion = currentQuaternion.slerp(targetQuaternion, lastPartialTick);
+            targetQuaternion.set(quad.getQuaternion());
+            prevQuaternion.set(quad.getPrevQuaternion());
+            currentQuaternion = prevQuaternion.slerp(targetQuaternion, (float)event.getPartialTick());
 
             //转换为欧拉角
             Vector3f eular = new Vector3f();

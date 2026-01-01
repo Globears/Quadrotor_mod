@@ -74,6 +74,7 @@ public class QuadrotorEntity extends Entity {
 
     //四元数姿态
     public Quaternionf quaternion = new Quaternionf();
+    private Quaternionf prevQuaternion = new Quaternionf();
     
     // 欧拉角（仅用于显示和同步，从四元数计算得到）
     private float rollAngle = 0.0f;  
@@ -136,6 +137,7 @@ public class QuadrotorEntity extends Entity {
                 pilot.teleportTo(this.getX(), this.getY() + 100, this.getZ());
             }
             
+            prevQuaternion.set(this.quaternion);
 
             // 应用自动控制
             MotorState autoMotorState = this.autoController.Update(this, this.controlCommand);
@@ -228,6 +230,8 @@ public class QuadrotorEntity extends Entity {
             spawnMotorParticle(motor2Pos, this.entityData.get(DATA_MOTOR2));
             spawnMotorParticle(motor3Pos, this.entityData.get(DATA_MOTOR3));
             spawnMotorParticle(motor4Pos, this.entityData.get(DATA_MOTOR4));
+
+            this.prevQuaternion.set(this.quaternion);
             
             // 将服务端数据同步到客户端
             this.yawAngle = getSynchedYawAngle();
@@ -435,6 +439,10 @@ public class QuadrotorEntity extends Entity {
 
     public Quaternionf getQuaternion(){
         return quaternion;
+    }
+
+    public Quaternionf getPrevQuaternion(){
+        return prevQuaternion;
     }
 
     public void setPilotUUID(UUID uuid){
