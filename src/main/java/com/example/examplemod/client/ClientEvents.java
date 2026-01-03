@@ -1,7 +1,6 @@
 package com.example.examplemod.client;
 
 import org.joml.Quaternionf;
-import org.joml.Quaternionfc;
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
 import org.joml.Math;
@@ -10,6 +9,7 @@ import com.example.examplemod.ExampleMod;
 import com.example.examplemod.autopilot.ControlCommand;
 import com.example.examplemod.autopilot.MotorState;
 import com.example.examplemod.entity.custom.QuadrotorEntity;
+import com.example.examplemod.item.custom.RemoteController;
 import com.example.examplemod.network.ModNetwork;
 import com.example.examplemod.network.packet.QuadrotorControlC2SPacket;
 
@@ -19,7 +19,6 @@ import net.minecraft.world.item.ItemStack;
 
 import org.lwjgl.system.MemoryStack;
 import java.nio.DoubleBuffer;
-import com.example.examplemod.item.RemoteController;
 
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RenderHandEvent;

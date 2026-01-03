@@ -12,7 +12,8 @@ import com.example.examplemod.autopilot.ControlCommand;
 import com.example.examplemod.autopilot.MotorState;
 import com.example.examplemod.autopilot.autocontrollers.SimpleAutoController;
 import com.example.examplemod.item.ModItems;
-import com.example.examplemod.item.RemoteController;
+import com.example.examplemod.item.custom.RemoteController;
+import com.mojang.authlib.GameProfile;
 
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
@@ -26,11 +27,17 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ChunkMap;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.TicketType;
+import net.minecraftforge.common.util.FakePlayer;
+import net.minecraftforge.common.util.FakePlayerFactory;
 import net.minecraftforge.common.world.ForgeChunkManager;
 import net.minecraftforge.network.NetworkHooks; 
 
@@ -96,12 +103,12 @@ public class QuadrotorEntity extends Entity {
     private ControlCommand controlCommand = new ControlCommand();
 
     private UUID pilotUUid = null;
-
-
+    
     public QuadrotorEntity(EntityType<? extends QuadrotorEntity> type, Level level) {
         super(type, level);
         this.setNoGravity(true);
     }
+
 
     @Override
     protected void defineSynchedData() {
@@ -125,6 +132,7 @@ public class QuadrotorEntity extends Entity {
     }
 
 
+
     @Override
     public void tick() {
         super.tick();
@@ -132,10 +140,10 @@ public class QuadrotorEntity extends Entity {
 
         //服务端操作
         if(!this.level().isClientSide()){ 
-            if(this.pilotUUid != null){
-                Player pilot = level().getPlayerByUUID(pilotUUid);
-                pilot.teleportTo(this.getX(), this.getY() + 100, this.getZ());
-            }
+            // if(this.pilotUUid != null){
+            //     Player pilot = level().getPlayerByUUID(pilotUUid);
+            //     pilot.teleportTo(this.getX(), this.getY() + 100, this.getZ());
+            // }
             
             prevQuaternion.set(this.quaternion);
 

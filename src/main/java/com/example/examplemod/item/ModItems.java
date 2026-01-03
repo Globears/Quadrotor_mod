@@ -2,6 +2,9 @@ package com.example.examplemod.item;
 
 
 import com.example.examplemod.ExampleMod;
+import com.example.examplemod.item.custom.Cheese;
+import com.example.examplemod.item.custom.QuadrotorSpawn;
+import com.example.examplemod.item.custom.RemoteController;
 
 import net.minecraft.world.item.Item;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -22,6 +25,11 @@ public class ModItems {
         () -> {
             return new RemoteController();
         });
+
+    public static final RegistryObject<Item> DRONE_SPAWN_ITEM = ITEMS.register(
+        "quadrotor_spawn", 
+        QuadrotorSpawn::new 
+    );
 
     public static void register(IEventBus eventBus){
         ITEMS.register(eventBus);

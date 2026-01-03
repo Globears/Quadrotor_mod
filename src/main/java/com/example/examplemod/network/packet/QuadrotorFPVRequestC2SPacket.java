@@ -48,6 +48,7 @@ public class QuadrotorFPVRequestC2SPacket {
 
             // 开始FPV
             if (pkt.start) {
+                
                 Entity e = sender.level().getEntity(pkt.entityId);
                 if(e instanceof QuadrotorEntity){
                     QuadrotorEntity quadrotor = (QuadrotorEntity)e;

@@ -1,4 +1,4 @@
-package com.example.examplemod.item;
+package com.example.examplemod.item.custom;
 
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.Item;
