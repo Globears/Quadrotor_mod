@@ -242,19 +242,21 @@ public class QuadrotorEntity extends Entity {
             this.pitchAngle = getSynchedPitchAngle();
             this.rollAngle = getSynchedRollAngle();
             this.quaternion = this.getSynchedQuaternion();
+
+            this.setYRot(-(float)Math.toDegrees(yawAngle));
+            this.setXRot((float)Math.toDegrees(pitchAngle));
             
         }
 
         this.move(MoverType.SELF, this.getDeltaMovement());
 
         //防止在撞到方块后的速度累计
-        if (!this.level().isClientSide()){
-            this.velocity = new Vector3f(
-                (float)this.getDeltaMovement().x, 
-                (float)this.getDeltaMovement().y, 
-                (float)this.getDeltaMovement().z
-            );
-        }
+        this.velocity = new Vector3f(
+            (float)this.getDeltaMovement().x, 
+            (float)this.getDeltaMovement().y, 
+            (float)this.getDeltaMovement().z
+        );
+        
 
     }
     
