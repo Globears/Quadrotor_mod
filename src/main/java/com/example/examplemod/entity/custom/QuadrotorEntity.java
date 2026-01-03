@@ -177,8 +177,9 @@ public class QuadrotorEntity extends Entity {
             );
 
             // 计算机体轴系下新的角速度,记得应用阻尼
-            angularVelocityBody = angularVelocityBody.add(angularAccelBody);
             angularVelocityBody.mul(1 - ANGULAR_DAMPING);
+            angularVelocityBody = angularVelocityBody.add(angularAccelBody);
+            
 
             // 该角速度会在这一游戏刻造成旋转，把这个旋转写成四元数的形式
             if (angularVelocityBody.lengthSquared() > 1.0E-7) {
