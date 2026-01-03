@@ -202,11 +202,6 @@ public class QuadrotorEntity extends Entity {
             pitchAngle = (float)eular.x;
             rollAngle = (float)eular.z;
 
-            // 防止在地面上时向下的速度累计
-            if (this.onGround() && velocity.y < 0) {
-                velocity = new Vector3f(velocity.x, 0, velocity.z);
-            }
-
             this.setDeltaMovement(new Vec3(velocity));
             
             // 更新实体显示用的角度（度）
@@ -251,6 +246,16 @@ public class QuadrotorEntity extends Entity {
         }
 
         this.move(MoverType.SELF, this.getDeltaMovement());
+
+        //防止在撞到方块后的速度累计
+        if (!this.level().isClientSide()){
+            this.velocity = new Vector3f(
+                (float)this.getDeltaMovement().x, 
+                (float)this.getDeltaMovement().y, 
+                (float)this.getDeltaMovement().z
+            );
+        }
+
     }
     
     /**
