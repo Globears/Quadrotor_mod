@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+  <groupId>com.example.examplemod</groupId>
+  <artifactId>forge-1.20.1-47.4.10-mdk</artifactId>
+  <versioning>
+    <latest>1.0.0</latest>
+    <release>1.0.0</release>
+    <versions>
+      <version>1.0.0</version>
+    </versions>
+    <lastUpdated>20260105135705</lastUpdated>
+  </versioning>
+</metadata>

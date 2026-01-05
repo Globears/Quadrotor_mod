@@ -120,10 +120,10 @@ public class QuadrotorEntity extends Entity {
 
         //服务端操作
         if(!this.level().isClientSide()){ 
-            // if(this.pilotUUid != null){
-            //     Player pilot = level().getPlayerByUUID(pilotUUid);
-            //     pilot.teleportTo(this.getX(), this.getY() + 100, this.getZ());
-            // }
+            if(this.pilotUUid != null){
+                Player pilot = level().getPlayerByUUID(pilotUUid);
+                pilot.teleportTo(this.getX(), this.getY() + 100, this.getZ());
+            }
             
             prevQuaternion.set(this.quaternion);
 
@@ -280,15 +280,13 @@ public class QuadrotorEntity extends Entity {
         // float x = tag.getFloat("QuaternionX");
         // float y = tag.getFloat("QuaternionY");
         // float z = tag.getFloat("QuaternionZ");
-        // this.quaternion = new Quaternionf(x, y, z, w);
+        // this.quaternion.set(x, y, z, w);
 
         // float yawSpeed = tag.getFloat("YawSpeed");
         // float pitchSpeed = tag.getFloat("PitchSpeed");
         // float rollSpeed = tag.getFloat("RollSpeed");
-        // this.angularVelocity = new Vector3f(pitchSpeed, yawSpeed, rollSpeed);
-        
-        // 同步数据
-        syncData();
+        // this.angularVelocity.set(pitchSpeed, yawSpeed, rollSpeed);
+
     }
 
     // ... 其他方法保持不变 ...
