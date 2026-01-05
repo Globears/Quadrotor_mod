@@ -15,12 +15,14 @@ import com.example.examplemod.network.packet.QuadrotorControlC2SPacket;
 
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.world.item.ItemStack;
 
 import org.lwjgl.system.MemoryStack;
 import java.nio.DoubleBuffer;
 
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.RenderGuiOverlayEvent;
 import net.minecraftforge.client.event.RenderHandEvent;
 import net.minecraftforge.client.event.ViewportEvent;
 import net.minecraftforge.event.TickEvent;
@@ -205,6 +207,10 @@ public class ClientEvents {
             event.setYaw(-yaw);
             event.setPitch(pitch);
             event.setRoll(roll);
+
+
+            //设置fpv角度
+            FpvHudRenderer.setRoll(roll);
             
         }
     }
@@ -216,4 +222,6 @@ public class ClientEvents {
         }
 
     }
+
+    
 }

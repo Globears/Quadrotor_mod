@@ -3,6 +3,7 @@ package com.example.examplemod.network.packet;
 import java.util.function.Supplier;
 
 import com.example.examplemod.client.ClientEvents;
+import com.example.examplemod.client.FpvManager;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
@@ -37,12 +38,14 @@ public class QuadrotorFPVResponseS2CPacket {
                         Minecraft.getInstance().setCameraEntity(Minecraft.getInstance().level.getEntity(pkt.entityId));
                         // 标记客户端 FPV 状态
                         ClientEvents.setFPV(true, pkt.entityId);
+                        FpvManager.setFPV(true);
                     }
                 }
             } else {
                 // 停止 FPV：将摄像机切回玩家
                 Minecraft.getInstance().setCameraEntity(Minecraft.getInstance().player);
                 ClientEvents.setFPV(false, -1);
+                FpvManager.setFPV(false);
             }
         });
         ctx.setPacketHandled(true);

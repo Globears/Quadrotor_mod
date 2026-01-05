@@ -1,6 +1,6 @@
 {
     "java.compile.nullAnalysis.mode": "disabled",
     "java.configuration.updateBuildConfiguration": "interactive",
-    "java.import.gradle.java.home": ""
+    "java.import.gradle.java.home": "D:\\SoftWare\\_Java_\\jdk-17"
 
 }
