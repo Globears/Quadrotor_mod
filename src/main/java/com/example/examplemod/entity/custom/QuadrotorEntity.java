@@ -184,7 +184,7 @@ public class QuadrotorEntity extends Entity {
 
             this.setDeltaMovement(new Vec3(velocity));
             
-            // 更新实体显示用的角度（度）
+            // 更新实体显示用的角度（度
             this.setYRot(-(float)Math.toDegrees(yawAngle));
             this.setXRot((float)Math.toDegrees(pitchAngle));
             
@@ -258,14 +258,14 @@ public class QuadrotorEntity extends Entity {
         tag.putFloat("Motor3", this.motor3);
         tag.putFloat("Motor4", this.motor4);
 
-        tag.putFloat("QuaternionW", this.quaternion.w);
-        tag.putFloat("QuaternionX", this.quaternion.x);
-        tag.putFloat("QuaternionY", this.quaternion.y);
-        tag.putFloat("QuaternionZ", this.quaternion.z);
+        // tag.putFloat("QuaternionW", this.quaternion.w);
+        // tag.putFloat("QuaternionX", this.quaternion.x);
+        // tag.putFloat("QuaternionY", this.quaternion.y);
+        // tag.putFloat("QuaternionZ", this.quaternion.z);
 
-        tag.putFloat("YawSpeed", this.angularVelocity.y);
-        tag.putFloat("PitchSpeed", this.angularVelocity.x);
-        tag.putFloat("RollSpeed", this.angularVelocity.z);
+        // tag.putFloat("YawSpeed", this.angularVelocity.y);
+        // tag.putFloat("PitchSpeed", this.angularVelocity.x);
+        // tag.putFloat("RollSpeed", this.angularVelocity.z);
 
     }
 
@@ -276,16 +276,16 @@ public class QuadrotorEntity extends Entity {
         this.motor3 = tag.getFloat("Motor3");
         this.motor4 = tag.getFloat("Motor4");
 
-        float w = tag.getFloat("QuaternionW");
-        float x = tag.getFloat("QuaternionX");
-        float y = tag.getFloat("QuaternionY");
-        float z = tag.getFloat("QuaternionZ");
-        this.quaternion = new Quaternionf(x, y, z, w);
+        // float w = tag.getFloat("QuaternionW");
+        // float x = tag.getFloat("QuaternionX");
+        // float y = tag.getFloat("QuaternionY");
+        // float z = tag.getFloat("QuaternionZ");
+        // this.quaternion = new Quaternionf(x, y, z, w);
 
-        float yawSpeed = tag.getFloat("YawSpeed");
-        float pitchSpeed = tag.getFloat("PitchSpeed");
-        float rollSpeed = tag.getFloat("RollSpeed");
-        this.angularVelocity = new Vector3f(pitchSpeed, yawSpeed, rollSpeed);
+        // float yawSpeed = tag.getFloat("YawSpeed");
+        // float pitchSpeed = tag.getFloat("PitchSpeed");
+        // float rollSpeed = tag.getFloat("RollSpeed");
+        // this.angularVelocity = new Vector3f(pitchSpeed, yawSpeed, rollSpeed);
         
         // 同步数据
         syncData();
