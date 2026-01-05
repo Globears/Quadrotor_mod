@@ -15,9 +15,7 @@ public class SimpleAutoController extends AutoController{
     private float integralYawError = 0.0f;
     private float lastYawAngle = 0.0f;
     private float lastYawErrorRate = 0.0f;
-
     private float lastPitchError = 0.0f;
-
     private float lastRollError = 0.0f;
 
     // PID 增益和常量
@@ -34,6 +32,10 @@ public class SimpleAutoController extends AutoController{
 
     // 机体常量（与 QuadrotorEntity 中的常量保持一致以便混控）
     private static final float K_YAW = 2.0f; // yaw 力矩系数（与实体中一致）
+    
+    // 新增：滚转补偿偏航的比例增益（核心参数，可调试）
+    // 数值越大，补偿越强烈；建议从0.3~1.0开始调试，避免过冲
+    private static final float KP_ROLL_TO_YAW = 0.5f;
 
     public MotorState Update(QuadrotorEntity quadrotor, ControlCommand command) {
 
@@ -42,6 +44,15 @@ public class SimpleAutoController extends AutoController{
         // 基准每电机推力（保持原有比例以稳定现有行为）
         float base = command.referenceThrottle * 0.5f; // 每电机基础推力
         float A = base * 4.0f; // 总推力（用于混控矩阵）
+
+        // --- 新增核心逻辑：基于当前滚转角计算补偿性偏航力矩 ---
+        // 1. 获取无人机当前实时滚转角（需确保QuadrotorEntity有该方法，若方法名不同请调整）
+        float currentRollAngle = quadrotor.getRollAngle(); 
+        // 2. 计算补偿性偏航力矩：滚转角越大，补偿偏航力矩越强
+        // 方向匹配：确保滚转角的正负与偏航力矩的正负抵消（可根据实际调试调整符号）
+        float rollCompensationYaw = -KP_ROLL_TO_YAW * currentRollAngle;
+        // 3. 叠加原有偏航指令和补偿偏航力矩（保留原有指令，新增自动补偿）
+        float totalYawCommand = command.referenceYaw + rollCompensationYaw;
 
         // --- Mixer 矩阵求解 (参考 QuadrotorEntity 的力矩定义)
         // 设：
@@ -52,7 +63,8 @@ public class SimpleAutoController extends AutoController{
 
         float B =  2.0f * command.referencePitch;
         float C =  2.0f * command.referenceRoll;
-        float D =  command.referenceYaw / K_YAW * 3;
+        // 改动点：将原command.referenceYaw替换为叠加补偿后的totalYawCommand
+        float D =  totalYawCommand / K_YAW * 3;
         //我们约定，向左偏航为正的偏航角，偏航角速度和偏航力矩也以该方向为正
         // 无敌坐标系
 

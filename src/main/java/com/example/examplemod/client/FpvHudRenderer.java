@@ -22,9 +22,14 @@ public class FpvHudRenderer {
     private static ResourceLocation len = new ResourceLocation(ExampleMod.MODID, "textures/gui/len.png");
 
     private static float rollAngle = 0;
+    private static float pitchAngle = 0;
 
     public static void setRoll(float roll){
         rollAngle = roll;
+    }
+
+    public static void setPitch(float pitch){
+        pitchAngle = pitch;
     }
 
     @SubscribeEvent
@@ -59,8 +64,7 @@ public class FpvHudRenderer {
         // 3.1 平移渲染原点到纹理中心（关键！否则旋转会以屏幕原点为中心）
         gui.pose().translate(centerX, centerY - 20, 0);
         // 3.2 旋转：顺时针12° → 转为弧度，负数表示顺时针（MC默认正数逆时针）
-        float rotateRadian = (float) Math.toRadians(rollAngle);
-        gui.pose().mulPose(Axis.ZP.rotation(-rotateRadian));
+        gui.pose().mulPose(Axis.ZP.rotation(-rollAngle));
         // 3.3 平移回纹理左上角（此时绘制坐标以中心为原点，所以要偏移-宽/2、-高/2）
         gui.pose().translate(-64 / 2.0f, -64 / 2.0f, 0);
 

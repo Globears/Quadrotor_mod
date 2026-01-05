@@ -210,7 +210,8 @@ public class ClientEvents {
 
 
             //设置fpv角度
-            FpvHudRenderer.setRoll(roll);
+            FpvHudRenderer.setRoll(eular.z);
+            FpvHudRenderer.setPitch(eular.x);
             
         }
     }
