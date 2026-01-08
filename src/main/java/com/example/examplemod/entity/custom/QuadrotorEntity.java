@@ -413,6 +413,10 @@ public class QuadrotorEntity extends Entity {
         return angularVelocity;
     }
 
+    public Vector3f getVelocity(){
+        return velocity;
+    }
+
     public void setPilotUUID(UUID uuid){
         this.pilotUUid = uuid;
     }

@@ -3,10 +3,12 @@ package com.example.examplemod.client;
 import org.joml.Math;
 
 import com.example.examplemod.ExampleMod;
+import com.example.examplemod.entity.custom.QuadrotorEntity;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.math.Axis;
 
+import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.GameRenderer;
@@ -38,6 +40,8 @@ public class FpvHudRenderer {
             return;
         }
         Minecraft mc = Minecraft.getInstance();
+        Camera camera = mc.gameRenderer.getMainCamera();
+        QuadrotorEntity quadrotor = (QuadrotorEntity)camera.getEntity();
 
         int screenWidth = mc.getWindow().getGuiScaledWidth();
         int screenHeight = mc.getWindow().getGuiScaledHeight();
@@ -53,6 +57,17 @@ public class FpvHudRenderer {
         //     0xFFAA00, // 橙色文字
         //     false
         // );
+
+        float speed = quadrotor.getVelocity().length();
+        String speedText = "Speed: " + String.valueOf(speed);
+        gui.drawString(
+            mc.font,
+            speedText,
+            0, centerY,
+            0xFFFFFF, // 白色文字
+            true
+        );
+
 
         gui.pose().pushPose();
         
