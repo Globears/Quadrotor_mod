@@ -2,6 +2,7 @@ package com.example.examplemod;
 
 import com.example.examplemod.entity.ModEntities;
 import com.example.examplemod.item.ModItems;
+import com.example.examplemod.sound.ModSounds;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
@@ -39,6 +40,7 @@ public class ExampleMod
 
         ModItems.register(modEventBus);
         ModEntities.register(modEventBus);
+        ModSounds.register(modEventBus);
 
         // Register the commonSetup method for modloading
         modEventBus.addListener(this::commonSetup);

@@ -1,0 +1,11 @@
+{
+  "rotor": {
+    "category": "player",
+    "sounds": [
+      {
+        "name": "examplemod:rotor",
+        "stream": true
+      }
+    ]
+  }
+}

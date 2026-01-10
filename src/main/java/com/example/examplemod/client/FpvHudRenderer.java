@@ -57,7 +57,7 @@ public class FpvHudRenderer {
         //     0xFFAA00, // 橙色文字
         //     false
         // );
-
+        
         float speed = quadrotor.getVelocity().length();
         String speedText = "Speed: " + String.valueOf(speed);
         gui.drawString(

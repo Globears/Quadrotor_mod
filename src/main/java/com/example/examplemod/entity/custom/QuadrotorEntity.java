@@ -13,9 +13,13 @@ import com.example.examplemod.autopilot.MotorState;
 import com.example.examplemod.autopilot.autocontrollers.SimpleAutoController;
 import com.example.examplemod.item.ModItems;
 import com.example.examplemod.item.custom.RemoteController;
+import com.example.examplemod.sound.ModSounds;
 
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.client.resources.sounds.SoundInstance;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
@@ -24,12 +28,16 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.vehicle.Minecart;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraftforge.network.NetworkHooks; 
 
 public class QuadrotorEntity extends Entity {
@@ -225,6 +233,15 @@ public class QuadrotorEntity extends Entity {
 
             this.setYRot(-(float)Math.toDegrees(yawAngle));
             this.setXRot((float)Math.toDegrees(pitchAngle));
+
+            SoundInstance rotorSound = SimpleSoundInstance.forAmbientAddition(
+                ModSounds.Rotor.get()
+            );
+
+            Minecraft.getInstance().getSoundManager().play(rotorSound);
+            
+
+            
             
         }
 
